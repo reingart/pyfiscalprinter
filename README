@@ -1,0 +1,4 @@
+epsonFiscalDriver.py: es el driver en sí. No sabe nada de la semántica de los comandos, solo maneja el protocolo de comunicación.
+fiscalGeneric.py: una interfaz genérica que definí en mi programa y que se implementa en epsonFiscal.py
+epsonFiscal.py: comandos de impresión de tickets fiscales para impresoras Epson.
+epsonFiscal.py: comandos de impresión de tickets fiscales para impresoras Hasar.
