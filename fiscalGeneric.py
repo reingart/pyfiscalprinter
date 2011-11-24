@@ -1,3 +1,8 @@
+# -*- coding: iso-8859-1 -*-
+
+class PrinterException(RuntimeError):
+    pass
+
 class PrinterInterface:
     """Interfaz que deben cumplir las impresoras fiscales."""
 

@@ -1,13 +1,15 @@
 # -*- coding: iso-8859-1 -*-
 import string
 import types
+import logging
+import unicodedata
 from fiscalGeneric import PrinterInterface, PrinterException
 import epsonFiscalDriver
 
 
 class ValidationError(Exception):
     pass
-    
+
 
 class FiscalPrinterError(Exception):
     pass
@@ -30,8 +32,9 @@ class FileDriver:
 
 
 def formatText(text):
-    translationMatrix = string.maketrans('áéíóúÁÉÍÓÚÄËÏÖÜäëïöüñÑ\\''º"|¿¡ª', 'aeiouAEIOUaeiouAEIOUnN       ')
-    return "".join(filter(lambda x: ord(x) >= 32 and ord(x) <= 127, str(text).translate(translationMatrix)))
+    asciiText = unicodedata.normalize('NFKD', unicode(text)).encode('ASCII', 'ignore')
+    return asciiText
+
 
 NUMBER = 999990
 
@@ -39,9 +42,6 @@ NUMBER = 999990
 class DummyDriver:
 
     def __init__(self):
-        ##from colofon.client.ui.utils.commonDialogs import inputInt
-        ##self.number = inputInt( None, "Ingrese el número de la última factura",
-        ##                        "Ingrese el número de la última factura" )
         global NUMBER
         NUMBER = NUMBER + 1
         self.number = NUMBER # para poder hacer los tests
@@ -50,8 +50,10 @@ class DummyDriver:
         pass
 
     def sendCommand(self, commandNumber, parameters, skipStatusErrors):
-        return ["00", "00", str(self.number), str(self.number), str(self.number), str(self.number),
+        ret = ["C080", "3600", str(self.number), str(self.number), str(self.number), str(self.number),
             str(self.number), str(self.number), str(self.number), str(self.number)]
+        print "sendCommand", ret, parameters
+        return ret
 
 
 class HasarPrinter(PrinterInterface):
@@ -85,6 +87,8 @@ class HasarPrinter(PrinterInterface):
 
     CMD_OPEN_DRAWER = 0x7b
 
+    CMD_SET_HEADER_TRAILER = 0x5d
+
     # Documentos no fiscales homologados (remitos, recibos, etc.)
     CMD_OPEN_DNFH = 0x80
     CMD_PRINT_EMBARK_ITEM = 0x82
@@ -105,12 +109,17 @@ class HasarPrinter(PrinterInterface):
 
     AVAILABLE_MODELS = ["615", "715v1", "715v2", "320"]
 
-    def __init__(self, deviceFile=None, speed=9600, host=None, port=None, model="615", dummy=False):
+    def __init__(self, deviceFile=None, speed=9600, host=None, port=None, model="615", dummy=False,
+                 connectOnEveryCommand=False):
         try:
             if dummy:
                 self.driver = DummyDriver()
             elif host:
-                self.driver = epsonFiscalDriver.EpsonFiscalDriverProxy(host, port)
+                if connectOnEveryCommand:
+                    self.driver = epsonFiscalDriver.EpsonFiscalDriverProxy(host, port,
+                        connectOnEveryCommand=True)
+                else:
+                    self.driver = epsonFiscalDriver.EpsonFiscalDriverProxy(host, port)
             else:
                 deviceFile = deviceFile or 0
                 self.driver = epsonFiscalDriver.HasarFiscalDriver(deviceFile, speed)
@@ -120,19 +129,31 @@ class HasarPrinter(PrinterInterface):
 
     def _sendCommand(self, commandNumber, parameters=(), skipStatusErrors=False):
         try:
-            from log4py import Logger
-            Logger().get_instance().info("sendCommand: SEND|0x%x|%s|%s" % \
-                (commandNumber, skipStatusErrors and "T" or "F", str(parameters)))
+            commandString = "SEND|0x%x|%s|%s" % (commandNumber, skipStatusErrors and "T" or "F",
+                str(parameters))
+            logging.getLogger().info("sendCommand: %s" % commandString)
             ret = self.driver.sendCommand(commandNumber, parameters, skipStatusErrors)
-            Logger().get_instance().info("reply: %s" % ret)
+            logging.getLogger().info("reply: %s" % ret)
             return ret
         except epsonFiscalDriver.PrinterException, e:
-            from log4py import Logger
-            Logger().get_instance().error("epsonFiscalDriver.PrinterException: %s" % str(e))
-            raise PrinterException("Error de la impresora fiscal: " + str(e))
+            logging.getLogger().error("epsonFiscalDriver.PrinterException: %s" % str(e))
+            raise PrinterException("Error de la impresora fiscal: %s.\nComando enviado: %s" % \
+                (str(e), commandString))
 
     def openNonFiscalReceipt(self):
         status = self._sendCommand(self.CMD_OPEN_NON_FISCAL_RECEIPT, [])
+
+        def checkStatusInComprobante(x):
+            fiscalStatus = int(x, 16)
+            return (fiscalStatus & (1 << 13)) == (1 << 13)
+
+        if not checkStatusInComprobante(status[1]):
+            # No tomó el comando, el status fiscal dice que no hay comprobante abierto, intento de nuevo
+            status = self._sendCommand(self.CMD_OPEN_NON_FISCAL_RECEIPT, [])
+            if not checkStatusInComprobante(status[1]):
+                raise PrinterException("Error de la impresora fiscal, no acepta el comando de iniciar "
+                    "un ticket no fiscal")
+
         self._currentDocument = self.CURRENT_DOC_NON_FISCAL
         return status
 
@@ -188,11 +209,37 @@ class HasarPrinter(PrinterInterface):
 
     ADDRESS_SIZE = 40
 
+    def _setHeaderTrailer(self, line, text):
+        self._sendCommand(self.CMD_SET_HEADER_TRAILER, (str(line), text))
+
+    def setHeader(self, header=None):
+        "Establecer encabezados"
+        if not header:
+            header = []
+        line = 3
+        for text in (header + [chr(0x7f)]*3)[:3]: # Agrego chr(0x7f) (DEL) al final para limpiar las
+                                                  # líneas no utilizadas
+            self._setHeaderTrailer(line, text)
+            line += 1
+
+    def setTrailer(self, trailer=None):
+        "Establecer pie"
+        if not trailer:
+            trailer = []
+        line = 11
+        for text in (trailer + [chr(0x7f)] * 9)[:9]:
+            self._setHeaderTrailer(line, text)
+            line += 1
+
     def _setCustomerData(self, name, address, doc, docType, ivaType):
-        if doc and filter(lambda x: x not in string.digits, doc.replace("-", "").replace(".", "")):
+        # limpio el header y trailer:
+        self.setHeader()
+        self.setTrailer()
+        doc = doc.replace("-", "").replace(".", "")
+        if doc and docType != "3" and filter(lambda x: x not in string.digits, doc):
+            # Si tiene letras se blanquea el DNI para evitar errores, excepto que sea
+            # docType="3" (Pasaporte)
             doc, docType = " ", " "
-        else:
-            doc = doc.replace("-", "").replace(".", "")
         if not doc.strip():
             docType = " "
 
@@ -290,6 +337,8 @@ class HasarPrinter(PrinterInterface):
         raise NotImplementedError
 
     def cancelDocument(self):
+        if not hasattr(self, "_currentDocument"):
+            return
         if self._currentDocument in (self.CURRENT_DOC_TICKET, self.CURRENT_DOC_BILL_TICKET,
                 self.CURRENT_DOC_CREDIT_BILL_TICKET, self.CURRENT_DOC_CREDIT_TICKET):
             try:
@@ -371,7 +420,7 @@ class HasarPrinter(PrinterInterface):
         return reply
 
     def openDrawer(self):
-        if self.model != "320":
+        if not self.model in ("320", "615"):
             self._sendCommand(self.CMD_OPEN_DRAWER, [])
 
     def dailyClose(self, type):
@@ -425,8 +474,7 @@ class HasarPrinter(PrinterInterface):
         except:
             pass
         try:
-            from log4py import Logger
-            Logger().get_instance().info("Cerrando comprobante con CLOSE")
+            logging.getLogger().info("Cerrando comprobante con CLOSE")
             self._sendCommand(self.CMD_CLOSE_FISCAL_RECEIPT)
             return True
         except:

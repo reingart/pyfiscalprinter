@@ -86,9 +86,16 @@ class EpsonFiscalDriver:
 
     def __del__( self ):
         if hasattr(self, "_serialPort" ):
-            del self._serialPort
+            try:
+                self.close()
+            except:
+                pass
 
     def close( self ):
+        try:
+            self._serialPort.close()
+        except:
+            pass
         del self._serialPort
 
     def sendCommand( self, commandNumber, fields, skipStatusErrors = False ):
@@ -308,18 +315,45 @@ class HasarFiscalDriver( EpsonFiscalDriver ):
                     break
         return reply
 
+class DummyDriver:
+    def close(self):
+        pass
+
+    def sendCommand(self, commandNumber, parameters, skipStatusErrors):
+        print commandNumber, parameters, skipStatusErrors
+        number = random.randint(0, 99999999)
+        return ["00", "00"] + [str(number)] * 11
 
 class EpsonFiscalDriverProxy:
-    def __init__( self, host, port, timeout = 60.0 ):
+    def __init__( self, host, port, timeout = 60.0, connectOnEveryCommand = False ):
+        self.connectOnEveryCommand = connectOnEveryCommand
+        self.timeout = timeout
+        self.host = host
+        self.port = port
+        if not connectOnEveryCommand:
+            self._connect()
+
+    def _connect(self):
         self.socket = socket.socket()
-        self.socket.settimeout( timeout )
+        self.socket.settimeout( self.timeout )
         try:
-            self.socket.connect( (host, port ) )
+            self.socket.connect( (self.host, self.port ) )
         except socket.error, e:
             raise ProxyError( "Error conectandose a la impresora remota: %s." % str(e) )
         self.socketFile = self.socket.makefile( "rw", 1 )
 
     def sendCommand( self, commandNumber, fields, skipStatusErrors = False ):
+        if self.connectOnEveryCommand:
+            self._connect()
+            try:
+                ret = self._sendCommand(commandNumber, fields, skipStatusErrors)
+            finally:
+                self.close()
+        else:
+            ret = self._sendCommand(commandNumber, fields, skipStatusErrors)
+        return ret
+
+    def _sendCommand( self, commandNumber, fields, skipStatusErrors = False ):
         commandStr = "0x" + ("00" + hex(commandNumber)[2:])[-2:].upper()
         self.socketFile.write( "SEND|%s|%s|%s\n" % (commandStr, skipStatusErrors and "T" or "F",
                                               fields) )
@@ -337,19 +371,21 @@ class EpsonFiscalDriverProxy:
             raise ProxyError( "Respuesta no válida del servidor: %s." % reply )
 
     def close( self ):
-        self.socket.close()
-        del self.socket
-
-    def __del__( self ):
         try:
-            self.close()
+            self.socket.close()
+            del self.socket
         except:
             pass
+
+    def __del__( self ):
+        self.close()
 
 
 def runServer( printerType, fileIn, fileOut, deviceFile, speed = 9600 ):
     if printerType == "Epson":
         p = EpsonFiscalDriver( deviceFile, speed )
+    elif printerType == "Dummy":
+        p = DummyDriver()
     else:
         p = HasarFiscalDriver( deviceFile, speed )
 #    p = EpsonFiscalDriverProxy( 'localhost', 12345 )
@@ -376,15 +412,24 @@ def runServer( printerType, fileIn, fileOut, deviceFile, speed = 9600 ):
         else:
             fileOut.write( "REPLY: %s\n" % reply )
         fileOut.flush()
+    p.close()
 
-def socketServer(printerType, host, port, deviceFile, speed):
+class ReusableTCPServer(SocketServer.TCPServer):
+    def server_bind(self):
+        """Override server_bind to set socket options."""
+        self.socket.setsockopt(socket.SOL_SOCKET,
+            socket.SO_REUSEADDR, 1)
+        return SocketServer.TCPServer.server_bind(self)
+
+
+def socketServer(printerType, host, port, deviceFile, speed, timeout = 60):
     class Handler( SocketServer.StreamRequestHandler ):
         rbufsize = 1
         wbufsize = 1
         def handle( self ):
             return runServer( printerType, self.rfile, self.wfile, deviceFile, speed )
 
-    server = SocketServer.TCPServer( (host, port), Handler )
+    server = ReusableTCPServer( (host, port), Handler )
     server.serve_forever()
 
 
@@ -411,13 +456,16 @@ if __name__ == "__main__":
                        help = "IP o Host donde escucha el server, si no se indica, la comunicación es por la entrada y salida estándar" )
     parser.add_option( "-t", "--printertype", action = "store", type = "string",
                        dest = "printerType", default = "Epson",
-                       help = "Tipo de impresora. Hasar o Epson. Default: Epson" )
+                       help = "Tipo de impresora. Hasar o Epson o Dummy. Default: Epson" )
+    parser.add_option( "-T", "--timeout", action = "store", type = "string",
+                       dest = "timeout", default = "60",
+                       help = "Tiempo de espera antes de cancelar la conexión (en segundos). Default: 60 segundos" )
     (opts, args) = parser.parse_args()
 
     if opts.debug:
         debug = debugEnabled
     if opts.port:
-        ret = socketServer( opts.printerType, opts.ip, int(opts.port), opts.deviceFile, int(opts.speed) )
+        ret = socketServer( opts.printerType, opts.ip, int(opts.port), opts.deviceFile, int(opts.speed), int(opts.timeout) )
     else:
         ret = runServer( opts.printerType, sys.stdin, sys.stdout, opts.deviceFile, int(opts.speed) )
     sys.exit( ret )

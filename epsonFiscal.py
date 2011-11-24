@@ -1,6 +1,8 @@
 # -*- coding: iso-8859-1 -*-
 import string
 import types
+import logging
+import unicodedata
 from fiscalGeneric import PrinterInterface, PrinterException
 import epsonFiscalDriver
 
@@ -23,18 +25,14 @@ class FileDriver:
 
 
 def formatText(text):
-    translationMatrix = string.maketrans('áéíóúÁÉÍÓÚÄËÏÖÜäëïöüñÑ\\''º"|¿¡ª', 'aeiouAEIOUaeiouAEIOUnN       ')
-    if isinstance(text, unicode):
-        text = text.encode("latin1", "ignore")
-    return text.translate(translationMatrix)
+    asciiText = unicodedata.normalize('NFKD', unicode(text)).encode('ASCII', 'ignore')
+    return asciiText
 
 
 class DummyDriver:
 
     def __init__(self):
-        from colofon.client.ui.utils.commonDialogs import inputInt
-        self.number = inputInt(None, "Ingrese el número de la última factura",
-                            "Ingrese el número de la última factura")
+        self.number = int(raw_input("Ingrese el número de la última factura: "))
 
     def close(self):
         pass
@@ -45,7 +43,7 @@ class DummyDriver:
 ##            #raise RuntimeError("saraza")
 ##        else:
 ##            pass
-        return ["00", "00", "", "", str(self.number), "", str(self.number)]
+        return ["00", "00", "", "", str(self.number), "", str(self.number)] + [str(self.number)] * 11
 
 
 class EpsonPrinter(PrinterInterface):
@@ -62,6 +60,10 @@ class EpsonPrinter(PrinterInterface):
     CMD_DAILY_CLOSE = 0x39
     CMD_STATUS_REQUEST = 0x2a
 
+    CMD_OPEN_DRAWER = 0x7b
+
+    CMD_SET_HEADER_TRAILER = 0x5d
+
     CMD_OPEN_NON_FISCAL_RECEIPT = 0x48
     CMD_PRINT_NON_FISCAL_TEXT = 0x49
     CMD_CLOSE_NON_FISCAL_RECEIPT = 0x4a
@@ -71,7 +73,7 @@ class EpsonPrinter(PrinterInterface):
     CURRENT_DOC_CREDIT_TICKET = 4
     CURRENT_DOC_NON_FISCAL = 3
 
-    models = ["tickeadoras", "epsonlx300+", "tm-2000af+"]
+    models = ["tickeadoras", "epsonlx300+", "tm-220-af"]
 
     def __init__(self, deviceFile=None, speed=9600, host=None, port=None, dummy=False, model=None):
         try:
@@ -95,14 +97,12 @@ class EpsonPrinter(PrinterInterface):
     def _sendCommand(self, commandNumber, parameters, skipStatusErrors=False):
         print "_sendCommand", commandNumber, parameters
         try:
-            from log4py import Logger
-            Logger().get_instance().info("sendCommand: SEND|0x%x|%s|%s" % (commandNumber,
+            logging.getLogger().info("sendCommand: SEND|0x%x|%s|%s" % (commandNumber,
                 skipStatusErrors and "T" or "F",
                                                                      str(parameters)))
             return self.driver.sendCommand(commandNumber, parameters, skipStatusErrors)
         except epsonFiscalDriver.PrinterException, e:
-            from log4py import Logger
-            Logger().get_instance().error("epsonFiscalDriver.PrinterException: %s" % str(e))
+            logging.getLogger().error("epsonFiscalDriver.PrinterException: %s" % str(e))
             raise PrinterException("Error de la impresora fiscal: " + str(e))
 
     def openNonFiscalReceipt(self):
@@ -130,6 +130,28 @@ class EpsonPrinter(PrinterInterface):
 
     ADDRESS_SIZE = 30
 
+    def _setHeaderTrailer(self, line, text):
+        self._sendCommand(self.CMD_SET_HEADER_TRAILER, (str(line), text))
+
+    def setHeader(self, header=None):
+        "Establecer encabezados"
+        if not header:
+            header = []
+        line = 3
+        for text in (header + [chr(0x7f)]*3)[:3]: # Agrego chr(0x7f) (DEL) al final para limpiar las
+                                                  # líneas no utilizadas
+            self._setHeaderTrailer(line, text)
+            line += 1
+
+    def setTrailer(self, trailer=None):
+        "Establecer pie"
+        if not trailer:
+            trailer = []
+        line = 11
+        for text in (trailer + [chr(0x7f)] * 9)[:9]:
+            self._setHeaderTrailer(line, text)
+            line += 1
+
     def openBillCreditTicket(self, type, name, address, doc, docType, ivaType, reference="NC"):
         return self._openBillCreditTicket(type, name, address, doc, docType, ivaType, isCreditNote=True)
 
@@ -146,7 +168,7 @@ class EpsonPrinter(PrinterInterface):
             docType = self.docTypeNames[docType]
         self._type = type
         if self.model == "epsonlx300+":
-            parameters = ["F", # Por ahora no soporto ND, que sería "D"
+            parameters = [isCreditNote and "N" or "F", # Por ahora no soporto ND, que sería "D"
                 "C",
                 type, # Tipo de FC (A/B/C)
                 "1",   # Copias - Ignorado
@@ -216,6 +238,9 @@ class EpsonPrinter(PrinterInterface):
             self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, ["C"])
             self._currentDocument = self.CURRENT_DOC_TICKET
 
+    def openDrawer(self):
+        self._sendCommand(self.CMD_OPEN_DRAWER, [])
+
     def closeDocument(self):
         if self._currentDocument == self.CURRENT_DOC_TICKET:
             reply = self._sendCommand(self.CMD_CLOSE_FISCAL_RECEIPT[self._getCommandIndex()], ["T"])
@@ -227,7 +252,7 @@ class EpsonPrinter(PrinterInterface):
             return reply[2]
         if self._currentDocument == self.CURRENT_DOC_CREDIT_TICKET:
             reply = self._sendCommand(self.CMD_CLOSE_FISCAL_RECEIPT[self._getCommandIndex()],
-                ["M", self._type, "FINAL"])
+                [self.model == "epsonlx300+" and "N" or "M", self._type, "FINAL"])
             del self._type
             return reply[2]
         if self._currentDocument in (self.CURRENT_DOC_NON_FISCAL, ):
@@ -257,8 +282,12 @@ class EpsonPrinter(PrinterInterface):
             # enviar con el iva incluido
             priceUnitStr = str(int(round(price * 100, 0)))
         else:
-            # enviar sin el iva (factura A)
-            priceUnitStr = str(int(round((price / ((100 + iva) / 100)) * 100, 0)))
+            if self.model == "tm-220-af":
+                # enviar sin el iva (factura A)
+                priceUnitStr =  "%0.4f" % (price / ((100.0 + iva) / 100.0))
+            else:
+                # enviar sin el iva (factura A)
+                priceUnitStr = str(int(round((price / ((100 + iva) / 100)) * 100, 0)))
         ivaStr = str(int(iva * 100))
         extraparams = self._currentDocument in (self.CURRENT_DOC_BILL_TICKET,
             self.CURRENT_DOC_CREDIT_TICKET) and ["", "", ""] or []
