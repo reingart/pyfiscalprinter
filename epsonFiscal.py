@@ -26,6 +26,7 @@ class FileDriver:
 
 def formatText(text):
     asciiText = unicodedata.normalize('NFKD', unicode(text)).encode('ASCII', 'ignore')
+    asciiText = asciiText.replace("\t", " ").replace("\n", " ").replace("\r", " ")
     return asciiText
 
 
@@ -112,7 +113,7 @@ class EpsonPrinter(PrinterInterface):
         return status
 
     def printNonFiscalText(self, text):
-        return self._sendCommand(self.CMD_PRINT_NON_FISCAL_TEXT, [formatText(text[:40])])
+        return self._sendCommand(self.CMD_PRINT_NON_FISCAL_TEXT, [formatText(text[:40] or " ")])
 
     ivaTypeMap = {
         PrinterInterface.IVA_TYPE_RESPONSABLE_INSCRIPTO: 'I',
@@ -230,9 +231,9 @@ class EpsonPrinter(PrinterInterface):
             return 2
         raise "Invalid currentDocument"
 
-    def openTicket(self):
+    def openTicket(self, defaultLetter='B'):
         if self.model == "epsonlx300+":
-            return self.openBillTicket("B", "CONSUMIDOR FINAL", "", None, None,
+            return self.openBillTicket(defaultLetter, "CONSUMIDOR FINAL", "", None, None,
                 self.IVA_TYPE_CONSUMIDOR_FINAL)
         else:
             self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, ["C"])
@@ -386,9 +387,9 @@ class EpsonPrinter(PrinterInterface):
         printerStatus = reply[0]
         x = int(printerStatus, 16)
         if ((1 << 4) & x) == (1 << 4):
-            ret.append(["Poco papel para la cinta de auditoría"])
+            ret.append("Poco papel para la cinta de auditoría")
         if ((1 << 5) & x) == (1 << 5):
-            ret.append(["Poco papel para comprobantes o tickets"])
+            ret.append("Poco papel para comprobantes o tickets")
         return ret
 
     def __del__(self):

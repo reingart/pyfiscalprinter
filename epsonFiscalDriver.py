@@ -41,7 +41,7 @@ class EpsonFiscalDriver:
     WAIT_CHAR_TIME = 0.1
     NO_REPLY_TRIES = 200
 
-    fiscalStatusErrors = [(1<<0 + 1<<7, "Memoria Fiscal llena"),
+    fiscalStatusErrors = [#(1<<0 + 1<<7, "Memoria Fiscal llena"),
                           (1<<0, "Error en memoria fiscal"),
                           (1<<1, "Error de comprobación en memoria de trabajo"),
                           (1<<2, "Poca batería"),
@@ -422,14 +422,17 @@ class ReusableTCPServer(SocketServer.TCPServer):
         return SocketServer.TCPServer.server_bind(self)
 
 
-def socketServer(printerType, host, port, deviceFile, speed, timeout = 60):
+def socketServer(printerType, host, port, deviceFile, speed, timeout = 60, returnServer=False):
     class Handler( SocketServer.StreamRequestHandler ):
         rbufsize = 1
         wbufsize = 1
         def handle( self ):
+            #self.connection.settimeout( timeout )
             return runServer( printerType, self.rfile, self.wfile, deviceFile, speed )
 
     server = ReusableTCPServer( (host, port), Handler )
+    if returnServer:
+    	return server
     server.serve_forever()
 
 

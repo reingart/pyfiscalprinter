@@ -33,6 +33,7 @@ class FileDriver:
 
 def formatText(text):
     asciiText = unicodedata.normalize('NFKD', unicode(text)).encode('ASCII', 'ignore')
+    asciiText = asciiText.replace("\t", " ").replace("\n", " ").replace("\r", " ")
     return asciiText
 
 
@@ -109,6 +110,30 @@ class HasarPrinter(PrinterInterface):
 
     AVAILABLE_MODELS = ["615", "715v1", "715v2", "320"]
 
+    textSizeDict = {
+        "615": {'nonFiscalText': 40,
+                 'customerName': 30,
+                 'custAddressSize': 40,
+                 'paymentDescription': 30,
+                 'fiscalText': 20,
+                 'lineItem': 20,
+                 'lastItemDiscount': 20,
+                 'generalDiscount': 20,
+                 'embarkItem': 108,
+                 'receiptText': 106,
+                },
+        "320": {'nonFiscalText': 120,
+                  'customerName': 50,
+                  'custAddressSize': 50,
+                  'paymentDescription': 50,
+                  'fiscalText': 50,
+                  'lineItem': 50,
+                  'lastItemDiscount': 50,
+                  'generalDiscount': 50,
+                  'embarkItem': 108,
+                 'receiptText': 106,
+                }
+        }
     def __init__(self, deviceFile=None, speed=9600, host=None, port=None, model="615", dummy=False,
                  connectOnEveryCommand=False):
         try:
@@ -266,9 +291,9 @@ class HasarPrinter(PrinterInterface):
         self._savedPayments = []
         return self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, [type, "T"])
 
-    def openTicket(self):
+    def openTicket(self, defaultLetter="B"):
         if self.model == "320":
-            self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, ["B", "T"])
+            self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, [defaultLetter, "T"])
         else:
             self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, ["T", "T"])
         self._currentDocument = self.CURRENT_DOC_TICKET
@@ -480,6 +505,23 @@ class HasarPrinter(PrinterInterface):
         except:
             pass
         return False
+
+    def getWarnings(self):
+        ret = []
+        reply = self._sendCommand(self.CMD_STATUS_REQUEST, [], True)
+        printerStatus = reply[0]
+        x = int(printerStatus, 16)
+        if ((1 << 4) & x) == (1 << 4):
+            ret.append("Poco papel para la cinta de auditoría")
+        if ((1 << 5) & x) == (1 << 5):
+            ret.append("Poco papel para comprobantes o tickets")
+        return ret
+
+    def __del__(self):
+        try:
+            self.close()
+        except:
+            pass
 
     def close(self):
         self.driver.close()
