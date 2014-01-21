@@ -370,7 +370,7 @@ class HasarPrinter(PrinterInterface):
             return status
         raise NotImplementedError
 
-    def addItem(self, description, quantity, price, iva, discount, discountDescription, negative=False):
+    def addItem(self, description, quantity, price, iva, discount, discountDescription, negative=False, barcode=None):
         if type(description) in types.StringTypes:
             description = [description]
         if negative:
@@ -383,9 +383,14 @@ class HasarPrinter(PrinterInterface):
         ivaStr = str(float(iva)).replace(",", ".")
         for d in description[:-1]:
             self._sendCommand(self.CMD_PRINT_TEXT_IN_FISCAL, [self._formatText(d, 'fiscalText'), "0"])
-        reply = self._sendCommand(self.CMD_PRINT_LINE_ITEM,
-                                   [self._formatText(description[-1], 'lineItem'),
-                                     quantityStr, priceUnitStr, ivaStr, sign, "0.0", "1", "T"])
+        if self.model == "250":
+            reply = self._sendCommand(self.CMD_PRINT_LINE_ITEM,
+                        [self._formatText(description[-1], 'lineItem'), 
+                         quantityStr, priceUnitStr, ivaStr, sign, barcode or ""])
+        else:
+            reply = self._sendCommand(self.CMD_PRINT_LINE_ITEM,
+                        [self._formatText(description[-1], 'lineItem'),
+                         quantityStr, priceUnitStr, ivaStr, sign, "0.0", "1", "T"])
         if discount:
             discountStr = str(float(discount)).replace(",", ".")
             self._sendCommand(self.CMD_LAST_ITEM_DISCOUNT,
