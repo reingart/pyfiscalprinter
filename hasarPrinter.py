@@ -132,8 +132,20 @@ class HasarPrinter(PrinterInterface):
                   'generalDiscount': 50,
                   'embarkItem': 108,
                  'receiptText': 106,
-                }
+                },
+        "250":   {'nonFiscalText': 80,          # PrintNonFiscalText
+                  'customerName': 42 * 3,       # OpenFisclaReceipt
+                  'custAddressSize': 26 * 5,    # SetCustExtraData
+                  'paymentDescription': 20,     # TotalTender
+                  'fiscalText': 42,             # PrintFiscalText
+                  'lineItem': 20,               # PrintLineItem
+                  'lastItemDiscount': 20,       # PrintLineItem
+                  'generalDiscount': 20,        # TotalTender
+                  'embarkItem': 0,
+                  'receiptText': 0,
+                },
         }
+
     def __init__(self, deviceFile=None, speed=9600, host=None, port=None, model="615", dummy=False,
                  connectOnEveryCommand=False):
         try:
