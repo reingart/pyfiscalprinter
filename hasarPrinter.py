@@ -182,32 +182,6 @@ class HasarPrinter(PrinterInterface):
         self._currentDocument = self.CURRENT_DOC_NON_FISCAL
         return status
 
-
-    textSizeDict = {
-        "615": {'nonFiscalText': 40,
-                 'customerName': 30,
-                 'custAddressSize': 40,
-                 'paymentDescription': 30,
-                 'fiscalText': 20,
-                 'lineItem': 20,
-                 'lastItemDiscount': 20,
-                 'generalDiscount': 20,
-                 'embarkItem': 108,
-                 'receiptText': 106,
-                },
-        "320": {'nonFiscalText': 120,
-                  'customerName': 50,
-                  'custAddressSize': 50,
-                  'paymentDescription': 50,
-                  'fiscalText': 50,
-                  'lineItem': 50,
-                  'lastItemDiscount': 50,
-                  'generalDiscount': 50,
-                  'embarkItem': 108,
-                 'receiptText': 106,
-                }
-        }
-
     def _formatText(self, text, context):
         sizeDict = self.textSizeDict.get(self.model)
         if not sizeDict:
