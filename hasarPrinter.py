@@ -280,6 +280,9 @@ class HasarPrinter(PrinterInterface):
     def openTicket(self, defaultLetter="B"):
         if self.model == "320":
             self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, [defaultLetter, "T"])
+        elif self.model == "250":
+            # no se envia datos de comprador, comprobante original, tipo A Factura
+            self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, ["", "", "", "", "", "", "A", chr(127), chr(127)])            
         else:
             self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, ["T", "T"])
         self._currentDocument = self.CURRENT_DOC_TICKET
