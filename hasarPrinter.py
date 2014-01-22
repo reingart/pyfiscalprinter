@@ -163,6 +163,8 @@ class HasarPrinter(PrinterInterface):
         except Exception, e:
             raise FiscalPrinterError("Imposible establecer comunicación.", e)
         self.model = model
+        if model in ('250', ):
+            self.driver.ACK = self.driver.NAK = None
 
     def _sendCommand(self, commandNumber, parameters=(), skipStatusErrors=False):
         try:

@@ -13,7 +13,7 @@ def debugEnabled( *args ):
 def debugDisabled( *args ):
     pass
 
-debug = debugDisabled
+debug = debugEnabled
 
 class PrinterException(Exception):
     pass
@@ -243,7 +243,8 @@ class HasarFiscalDriver( EpsonFiscalDriver ):
             raise ComunicationError, "Demasiados NAK desde la impresora. Revise la conexión."
         self._write( message )
         timeout = time.time() + self.WAIT_TIME
-        while 1:
+        # esperar ACK (si esta definido)
+        while self.ACK:
             if time.time() > timeout:
                 raise ComunicationError, "Expiró el tiempo de espera para una respuesta de la impresora. Revise la conexión."
             c = self._read(1)
@@ -253,6 +254,10 @@ class HasarFiscalDriver( EpsonFiscalDriver ):
                 return True
             if c == self.NAK:
                 return self._sendAndWaitAck( message, count + 1 )
+            if ord(c) in (0x12, 0x14): # DC2 o DC4
+                # incrementar timeout
+                timeout += self.WAIT_TIME
+                continue
 
     def _sendMessage( self, message ):
         # Envía el mensaje
@@ -293,8 +298,12 @@ class HasarFiscalDriver( EpsonFiscalDriver ):
                         reply += c
                 bcc = self._read(4) # Leo BCC
                 if not self._checkReplyBCC( reply, bcc ):
-                    # Mando un NAK y espero la respuesta de nuevo.
-                    self._write( self.NAK )
+                    if self.NAK:
+                        # Mando un NAK y espero la respuesta de nuevo.
+                        self._write( self.NAK )
+                    else:
+                        # reenvio el mismo mensaje en caso de error (sin NAK)
+                        self._sendAndWaitAck( message )
                     timeout = time.time() + self.WAIT_TIME
                     retries += 1
                     if retries > self.RETRIES:
@@ -311,7 +320,8 @@ class HasarFiscalDriver( EpsonFiscalDriver ):
                     continue
                 else:
                     # Respuesta OK
-                    self._write( self.ACK )
+                    if self.ACK:
+                        self._write( self.ACK )
                     break
         return reply
 
