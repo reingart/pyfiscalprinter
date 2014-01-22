@@ -454,10 +454,13 @@ class HasarPrinter(PrinterInterface):
             # La respuesta no es válida. Vuelvo a hacer el pedido y
             #si hay algún error que se reporte como excepción
             reply = self._sendCommand(self.CMD_STATUS_REQUEST, [], False)
-        if letter == "A":
-            return int(reply[4])
+        if self.model in ('250', ):
+            return int(reply[{'A': 7, 'B': 8, 'D': 9}[letter]])
         else:
-            return int(reply[2])
+            if letter == "A":
+                return int(reply[4])
+            else:
+                return int(reply[2])
 
     def getLastCreditNoteNumber(self, letter):
         reply = self._sendCommand(self.CMD_STATUS_REQUEST, [], True)
