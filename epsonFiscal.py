@@ -278,7 +278,10 @@ class EpsonPrinter(PrinterInterface):
         else:
             sign = 'M'
         quantityStr = str(int(quantity * 1000))
-        bultosStr = str(int(quantity))
+        if self.model == "epsonlx300+":
+            bultosStr = str(int(quantity))
+        else:
+            bultosStr = "0" * 5  # No se usa en TM220AF ni TM300AF ni TMU220AF
         if self._currentDocumentType != 'A':
             # enviar con el iva incluido
             priceUnitStr = str(int(round(price * 100, 0)))
@@ -298,7 +301,7 @@ class EpsonPrinter(PrinterInterface):
                                    [formatText(d)[:20]])
         reply = self._sendCommand(self.CMD_PRINT_LINE_ITEM[self._getCommandIndex()],
                           [formatText(description[-1][:20]),
-                            quantityStr, priceUnitStr, ivaStr, sign, bultosStr, "0"] + extraparams)
+                            quantityStr, priceUnitStr, ivaStr, sign, bultosStr, "0" * 8] + extraparams)
         if discount:
             discountStr = str(int(discount * 100))
             self._sendCommand(self.CMD_PRINT_LINE_ITEM[self._getCommandIndex()],
