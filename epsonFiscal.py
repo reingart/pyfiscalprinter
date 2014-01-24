@@ -404,3 +404,68 @@ class EpsonPrinter(PrinterInterface):
     def close(self):
         self.driver.close()
         self.driver = None
+        
+
+class EpsonChilePrinter(EpsonPrinter):
+    DEBUG = True
+
+    # EPSON Fiscal Chile: comandos de dos bytes + extensión de dos bytes
+
+    CMD_OPEN_FISCAL_RECEIPT = None
+    CMD_OPEN_BILL_TICKET = None
+    CMD_PRINT_TEXT_IN_FISCAL = None
+    CMD_PRINT_LINE_ITEM = None
+    CMD_PRINT_SUBTOTAL = None
+    CMD_ADD_PAYMENT = None
+    CMD_CLOSE_FISCAL_RECEIPT = None
+    CMD_DAILY_CLOSE = None
+    CMD_STATUS_REQUEST = 0x0830     # Información de acumuladores y contadores
+    CMD_OPEN_DRAWER = 0x0707        # Abrir Cajón de Dinero (cajon dinero 1)
+    CMD_CUT_PAPER = 0x0702          # Cortar papel
+
+    CMD_SET_HEADER_TRAILER = None
+
+    CMD_OPEN_NON_FISCAL_RECEIPT = None
+    CMD_PRINT_NON_FISCAL_TEXT = None
+    CMD_CLOSE_NON_FISCAL_RECEIPT = None
+
+    CURRENT_DOC_TICKET = 1
+    CURRENT_DOC_BILL_TICKET = 2
+    CURRENT_DOC_CREDIT_TICKET = 4
+    CURRENT_DOC_NON_FISCAL = 3
+
+    models = ["TM-T88III", "TM-T88IV", "TM-H6000II", "TM-H6000III"]
+
+    def __init__(self, deviceFile=None, speed=9600, host=None, port=None, dummy=False, model=None):
+        try:
+            if dummy:
+                self.driver = DummyDriver()
+            elif host:
+                self.driver = epsonFiscalDriver.EpsonFiscalDriverProxy(host, port)
+            else:
+                deviceFile = deviceFile or 0
+                self.driver = epsonFiscalDriver.EpsonChileFiscalDriver(deviceFile, speed)
+        except Exception, e:
+            raise FiscalPrinterError("Imposible establecer comunicación.", e)
+        if not model:
+            self.model = "TM-T88IV"
+        else:
+            self.model = model
+        self._currentDocument = None
+        self._currentDocumentType = None
+
+    def openDrawer(self):
+        self._sendCommand(self.CMD_OPEN_DRAWER, ['\0\0'])
+
+    def cutPaper(self):
+        self._sendCommand(self.CMD_OPEN_DRAWER, ['\0\0'])
+
+    def getLastNumber(self, letter):
+        reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0'], True)
+        return
+
+    def getLastCreditNoteNumber(self, letter):
+        reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0'], True)
+        return
+
+

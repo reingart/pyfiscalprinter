@@ -5,6 +5,7 @@ import time
 import sys
 import SocketServer
 import socket
+import struct
 import traceback
 
 def debugEnabled( *args ):
@@ -35,11 +36,40 @@ ServerErrors = [UnknownServerError, ComunicationError, PrinterStatusError, Fisca
 class ProxyError(PrinterException):
     errorNumber = 5
 
+class SerialPortSimulator:
+    "Fake file-like for testing"
+    
+    def __init__(self):
+        self.rd = open("fiscal_in.bin", "rb")
+        self.wr = open("fiscal_out.bin", "wb")
+
+    def read(self, *args, **kwargs):
+        s = self.rd.read(*args, **kwargs)
+        print "read() -> %s" % "".join(["%02x" % ord(c) for c in s])
+        if not s:
+            raise RuntimeError("no mas datos")
+        return s
+    
+    def write(self, s, *args, **kwargs):
+        print "write(%s)" % "".join(["%02x" % ord(c) for c in s])
+        return self.wr.write(s, *args, **kwargs)
+
+    def close(self):
+        self.rd.close()
+        self.wr.close() 
+
+
 class EpsonFiscalDriver:
     WAIT_TIME = 10
     RETRIES = 4
     WAIT_CHAR_TIME = 0.1
     NO_REPLY_TRIES = 200
+    CMD_FMT = lambda self, x: chr(x)
+    MIN_SEQ = 0x20
+    MAX_SEQ = 0x7f
+    ACK = None #chr(0x06)
+    NAK = chr(0x15)
+    REPLY_MAP = {"CommandNumber": 0, "StatPrinter": 1, "StatFiscal": 2}
 
     fiscalStatusErrors = [#(1<<0 + 1<<7, "Memoria Fiscal llena"),
                           (1<<0, "Error en memoria fiscal"),
@@ -63,17 +93,21 @@ class EpsonFiscalDriver:
                           ]
 
     def __init__( self, deviceFile, speed = 9600 ):
-        self._serialPort = serial.Serial( port = deviceFile, timeout = None, baudrate = speed )
+        if deviceFile:
+            self._serialPort = serial.Serial( port = deviceFile, timeout = None, baudrate = speed )
+        else:
+            self._serialPort = SerialPortSimulator()
         self._initSequenceNumber()
 
     def _initSequenceNumber( self ):
-        self._sequenceNumber = random.randint( 0x20, 0x7f )
+        self._sequenceNumber = random.randint( self.MIN_SEQ, self.MAX_SEQ )
 
     def _incrementSequenceNumber( self ):
-        # Avanzo el número de sequencia, volviendolo a 0x20 si pasó el limite
-        self._sequenceNumber += 1
-        if self._sequenceNumber > 0x7f:
-            self._sequenceNumber = 0x20
+        # Avanzo el número de sequencia, volviendolo al inicio si pasó el limite
+        if self._sequenceNumber < self.MAX_SEQ:
+            self._sequenceNumber += 1
+        else:
+            self._sequenceNumber = self.MIN_SEQ
 
     def _write( self, s ):
         debug( "_write", ", ".join( [ "%x" % ord(c) for c in s ] ) )
@@ -99,7 +133,7 @@ class EpsonFiscalDriver:
         del self._serialPort
 
     def sendCommand( self, commandNumber, fields, skipStatusErrors = False ):
-        message = chr(0x02) + chr( self._sequenceNumber ) + chr(commandNumber)
+        message = chr(0x02) + chr( self._sequenceNumber ) + self.CMD_FMT(commandNumber)
         if fields:
             message += chr(0x1c)
         message += chr(0x1c).join( fields )
@@ -112,14 +146,15 @@ class EpsonFiscalDriver:
         return self._parseReply( reply, skipStatusErrors )
 
     def _parseReply( self, reply, skipStatusErrors ):
-        r = reply[4:-1] # Saco STX <Nro Seq> <Nro Comando> <Sep> ... ETX
+        r = reply[2:-1] # Saco STX <Nro Seq> ... ETX
         fields = r.split( chr(28) )
-        printerStatus = fields[0]
-        fiscalStatus = fields[1]
+        commandNumber = fields[self.REPLY_MAP["CommandNumber"]]  # TODO: chequear
+        printerStatus = fields[self.REPLY_MAP["PrinterStatus"]]
+        fiscalStatus = fields[self.REPLY_MAP["FiscalStatus"]]
         if not skipStatusErrors:
             self._parsePrinterStatus( printerStatus )
             self._parseFiscalStatus( fiscalStatus )
-        return fields
+        return fields[1:]
 
     def _parsePrinterStatus( self, printerStatus ):
         x = int( printerStatus, 16 )
@@ -149,6 +184,7 @@ class EpsonFiscalDriver:
                 # incrementar timeout
                 timeout += self.WAIT_TIME
                 continue
+            # TODO: verificar ACK
             if ord(c) == 0x15: # NAK
                 if retries > self.RETRIES:
                     raise ComunicationError, "Falló el envío del comando a la impresora luego de varios reintentos"
@@ -162,7 +198,8 @@ class EpsonFiscalDriver:
                 noreplyCounter = 0
                 while c != chr(0x03): # ETX (Fin de texto)
                     c = self._read(1)
-                    if not c:
+                    # TODO: soportar ESC y cantidad mínima de bytes por campo obligatorio
+                    if not c:   
                         noreplyCounter += 1
                         time.sleep(self.WAIT_CHAR_TIME)
                         if noreplyCounter > self.NO_REPLY_TRIES:
@@ -189,6 +226,8 @@ class EpsonFiscalDriver:
                     continue
                 else:
                     # Respuesta OK
+                    if self.ACK:
+                        self._write( self.ACK )
                     break
         return reply
 
@@ -200,6 +239,21 @@ class EpsonFiscalDriver:
         debug( "checkSumHexa", checkSumHexa )
         debug( "bcc", bcc )
         return checkSumHexa == bcc.upper()
+
+
+class EpsonChileFiscalDriver(EpsonFiscalDriver):
+    WAIT_TIME = 10
+    RETRIES = 4
+    WAIT_CHAR_TIME = 0.1
+    NO_REPLY_TRIES = 200
+    CMD_FMT = lambda self, x: struct.pack(">H", x) # unsigned short (network big-endian)
+    MIN_SEQ = 0x81
+    MAX_SEQ = 0xff
+    RES_SEQ = 0x80      # Paquete de Respuesta Intermedia (no responder con ACK)
+    ACK = chr(0x06)
+    NAK = chr(0x15)
+    REPLY_MAP = {"CommandNumber": 2, "StatPrinter": 0, "StatFiscal": 1, "Return": 3}
+
 
 class HasarFiscalDriver( EpsonFiscalDriver ):
     fiscalStatusErrors = [(1<<0 + 1<<7, "Memoria Fiscal llena"),

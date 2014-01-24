@@ -3,7 +3,12 @@
 import sys
 
 # Crear el controlador para la impresora fiscal:
-if False or '--epson' in sys.argv:
+if True or '--chile' in sys.argv:
+    from epsonFiscal import EpsonChilePrinter
+    print "Usando driver de Epson Chile"
+    model = ["TM-T88III", "TM-T88IV", "TM-H6000II", "TM-H6000III"][1]
+    printer = EpsonChilePrinter(deviceFile="", model=model, dummy=False)
+elif False or '--epson' in sys.argv:
     from epsonFiscal import EpsonPrinter
     print "Usando driver de Epson"
     model = ["tickeadoras", "epsonlx300+", "tm-220-af"][1]
@@ -14,6 +19,14 @@ else:
     model = ["615", "715v1", "715v2", "320"][0]
     printer = HasarPrinter(deviceFile="COM2", model=model, dummy=False)
 
+
+print "abriendo cajon"
+resp = printer.openDrawer()
+raw_input()
+print "cortando papel"
+resp = printer.cutPaper()   
+raw_input()
+    
 # Obtener el último número de factura emitida
 number = printer.getLastNumber("B") + 1
 print "imprimiendo la FC ", number
