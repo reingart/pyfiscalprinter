@@ -20,11 +20,12 @@ else:
     printer = HasarPrinter(deviceFile="COM2", model=model, dummy=False)
 
 
-print "abriendo cajon"
-resp = printer.openDrawer()
-raw_input()
 print "cortando papel"
 resp = printer.cutPaper()   
+raw_input()
+
+print "abriendo cajon"
+resp = printer.openDrawer()
 raw_input()
     
 # Obtener el último número de factura emitida

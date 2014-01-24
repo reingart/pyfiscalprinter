@@ -458,7 +458,7 @@ class EpsonChilePrinter(EpsonPrinter):
         self._sendCommand(self.CMD_OPEN_DRAWER, ['\0\0'])
 
     def cutPaper(self):
-        self._sendCommand(self.CMD_OPEN_DRAWER, ['\0\0'])
+        self._sendCommand(self.CMD_CUT_PAPER, ['\0\0'])
 
     def getLastNumber(self, letter):
         reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0'], True)

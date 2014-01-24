@@ -14,7 +14,7 @@ def debugEnabled( *args ):
 def debugDisabled( *args ):
     pass
 
-debug = debugDisabled
+debug = debugEnabled
 
 class PrinterException(Exception):
     pass
@@ -133,10 +133,10 @@ class EpsonFiscalDriver:
         del self._serialPort
 
     def sendCommand( self, commandNumber, fields, skipStatusErrors = False ):
-        message = chr(0x02) + chr( self._sequenceNumber ) + self.CMD_FMT(commandNumber)
+        message = chr(0x02) + chr( self._sequenceNumber ) + self._escape(self.CMD_FMT(commandNumber))
         if fields:
             message += chr(0x1c)
-        message += chr(0x1c).join( fields )
+        message += chr(0x1c).join([self._escape(field) for field in fields])
         message += chr(0x03)
         checkSum = sum( [ord(x) for x in message ] )
         checkSumHexa = ("0000" + hex(checkSum)[2:])[-4:].upper()
@@ -239,6 +239,15 @@ class EpsonFiscalDriver:
         debug( "checkSumHexa", checkSumHexa )
         debug( "bcc", bcc )
         return checkSumHexa == bcc.upper()
+
+    def _escape(self, field):
+        "Escapar caracteres especiales (STX, ETX, ESC, FS)"
+        ret = []
+        for char in field:
+            if ord(char) in (0x02, 0x03, 0x1b, 0x1c, ):
+                 ret.append(chr(0x1b))                    # agregar escape
+            ret.append(char)
+        return "".join(ret)
 
 
 class EpsonChileFiscalDriver(EpsonFiscalDriver):
