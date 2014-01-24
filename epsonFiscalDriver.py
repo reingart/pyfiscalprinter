@@ -70,6 +70,7 @@ class EpsonFiscalDriver:
     ACK = None #chr(0x06)
     NAK = chr(0x15)
     REPLY_MAP = {"CommandNumber": 0, "StatPrinter": 1, "StatFiscal": 2}
+    STAT_FN = lambda self, x: int( x, 16 )
 
     fiscalStatusErrors = [#(1<<0 + 1<<7, "Memoria Fiscal llena"),
                           (1<<0, "Error en memoria fiscal"),
@@ -148,22 +149,24 @@ class EpsonFiscalDriver:
     def _parseReply( self, reply, skipStatusErrors ):
         r = reply[2:-1] # Saco STX <Nro Seq> ... ETX
         fields = r.split( chr(28) )
-        commandNumber = fields[self.REPLY_MAP["CommandNumber"]]  # TODO: chequear
-        printerStatus = fields[self.REPLY_MAP["PrinterStatus"]]
-        fiscalStatus = fields[self.REPLY_MAP["FiscalStatus"]]
+        printerStatus = fields[self.REPLY_MAP["StatPrinter"]]
+        fiscalStatus = fields[self.REPLY_MAP["StatFiscal"]]
         if not skipStatusErrors:
             self._parsePrinterStatus( printerStatus )
             self._parseFiscalStatus( fiscalStatus )
-        return fields[1:]
+        # elimino el numero de comando (por compatibilidad con Epson Arg.)
+        if "CommandNumber" in self.REPLY_MAP:
+            fields.pop(self.REPLY_MAP["CommandNumber"])
+        return fields
 
     def _parsePrinterStatus( self, printerStatus ):
-        x = int( printerStatus, 16 )
+        x = self.STAT_FN(printerStatus)
         for value, message in self.printerStatusErrors:
             if (value & x) == value:
                 raise PrinterStatusError, message
 
     def _parseFiscalStatus( self, fiscalStatus ):
-        x = int( fiscalStatus, 16 )
+        x = self.STAT_FN(fiscalStatus)
         for value, message in self.fiscalStatusErrors:
             if (value & x) == value:
                 raise FiscalStatusError, message
@@ -262,6 +265,7 @@ class EpsonChileFiscalDriver(EpsonFiscalDriver):
     ACK = chr(0x06)
     NAK = chr(0x15)
     REPLY_MAP = {"CommandNumber": 2, "StatPrinter": 0, "StatFiscal": 1, "Return": 3}
+    STAT_FN = lambda self, x: struct.unpack(">H", x)[0] # convertir de unsigned short
 
 
 class HasarFiscalDriver( EpsonFiscalDriver ):
