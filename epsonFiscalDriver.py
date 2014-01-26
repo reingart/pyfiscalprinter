@@ -325,6 +325,12 @@ class HasarFiscalDriver( EpsonFiscalDriver ):
                     break
         return reply
 
+
+class HasarPanamaFiscalDriver( HasarFiscalDriver ):
+    ACK = None 
+    NAK = None
+
+
 class DummyDriver:
     def close(self):
         pass

@@ -8,7 +8,7 @@ if 0:
 else:
     from hasarPrinter import HasarPrinter
     print "Usando driver de Hasar"
-    printer = HasarPrinter(deviceFile="/dev/ttyS0", model="615", dummy=True)
+    printer = HasarPrinter(deviceFile="/dev/ttyS0", model="250", dummy=False)
 
 
 number = printer.getLastNumber("B") + 1
