@@ -36,6 +36,9 @@ ServerErrors = [UnknownServerError, ComunicationError, PrinterStatusError, Fisca
 class ProxyError(PrinterException):
     errorNumber = 5
 
+class ReturnError(PrinterException): 
+    errorNumber = 6
+
 class SerialPortSimulator:
     "Fake file-like for testing"
     
@@ -70,7 +73,6 @@ class EpsonFiscalDriver:
     ACK = None #chr(0x06)
     NAK = chr(0x15)
     REPLY_MAP = {"CommandNumber": 0, "StatPrinter": 1, "StatFiscal": 2}
-    STAT_FN = lambda self, x: int( x, 16 )
 
     fiscalStatusErrors = [#(1<<0 + 1<<7, "Memoria Fiscal llena"),
                           (1<<0, "Error en memoria fiscal"),
@@ -149,6 +151,7 @@ class EpsonFiscalDriver:
     def _parseReply( self, reply, skipStatusErrors ):
         r = reply[2:-1] # Saco STX <Nro Seq> ... ETX
         fields = r.split( chr(28) )
+        field = [self._escape(field) for field in fields]
         printerStatus = fields[self.REPLY_MAP["StatPrinter"]]
         fiscalStatus = fields[self.REPLY_MAP["StatFiscal"]]
         if not skipStatusErrors:
@@ -252,8 +255,113 @@ class EpsonFiscalDriver:
             ret.append(char)
         return "".join(ret)
 
-
 class EpsonChileFiscalDriver(EpsonFiscalDriver):
+    
+    returnErrors = {
+                        0: "Correcto",
+                        1: "Error Interno",
+                        2: "Error de Inicializacion",
+                        3: "Error de Proceso Interno",
+                        257: "Estado Inválido",
+                        258: "Documento Inválido",
+                        259: "Requiere Modo Técnico",
+                        260: "Requiere Jumper de Reset Off",
+                        261: "Requiere Jumper de Reset On",
+                        262: "Requiere Jumper de Intervención Off",
+                        263: "Requiere Jumper de Intervención On",
+                        513: "Frame de Comando Inválido",
+                        514: "Comando Inválido",
+                        515: "Campos en Exceso",
+                        516: "Campos en Defecto",
+                        517: "Campo no Opcional",
+                        518: "Campo Alfanumérico Inválido",
+                        519: "Campo Alfabetico Inválido",
+                        520: "Campo Numerico Inválido",
+                        521: "Campo Binario Inválido",
+                        522: "Campo Imprimible Inválido",
+                        523: "Campo Hexadecimal Inválido",
+                        524: "Campo de Fecha Inválido",
+                        525: "Campo de Hora Inválido",
+                        526: "Campo de Texto Enriquecido Inválido",
+                        527: "Campo Booleano Inválido",
+                        528: "Largo del Campo Inválido",
+                        529: "Extension del Comando Inválida",
+                        530: "El Campo no Soporta Código de Barras",
+                        531: "El Campo no Soporta Atributos",
+                        532: "Atributo Inválido",
+                        533: "Dato de Código de barra Inválido",
+                        769: "Error de Hardware",
+                        770: "Impresora Fuera de Linea",
+                        771: "Error de Impresion",
+                        772: "Problemas de Papel",
+                        773: "Poco Papel Disponible",
+                        774: "Error al Cargar/Expulsar Papel",
+                        775: "Caracteristica de impresora no soportada",
+                        776: "Error Display",
+                        777: "Secuencia de escaneo Inválida",
+                        778: "Area de recorte Inválida",
+                        779: "Escaner no listo",
+                        1025: "Numero de Serie Inválido",
+                        1026: "Datos Fiscales no Seteados",
+                        1283: "Fecha/Hora Fuera de Rango",
+                        1284: "Razon Social Inválida",
+                        1285: "Punto de Venta Inválido",
+                        1286: "RUT Inválido",
+                        1288: "Numero de Encabezado/Cola Inválido",
+                        1289: "Exceso de Fiscalizaciones",
+                        1292: "Exceso de Tipos de Pago",
+                        1293: "Tipo de Pago ya Definido",
+                        1294: "Tipo de Pago Inválido",
+                        1295: "Desc. del Tipo de Pago Inválida",
+                        1296: "Porcentaje de Max.Desc. Inválido",
+                        1297: "Claves de EJ Inválidas",
+                        1298: "Claves EJ no Seteadas",
+                        1299: "Datos de Logo Inválido",
+                        2049: "Requiere Jornada Fiscal Abierta",
+                        2050: "Requiere Jornada Fiscal Cerrada",
+                        2051: "Memoria Fiscal Completa",
+                        2052: "Se Requiere un Cierre Z",
+                        2053: "Requiere Tipos de Pago Definidos",
+                        2054: "Exceso de Tipo de Pagos por Jornada",
+                        2055: "No hay datos",
+                        2305: "Overflow",
+                        2306: "Underflow",
+                        2307: "Exceso de Items",
+                        2308: "Exceso de Tasas de Impuesto",
+                        2309: "Exceso de Descuentos/Recargos",
+                        2310: "Exceso de Pagos",
+                        2311: "Item no Localizado",
+                        2312: "Pago no Localizado",
+                        2313: "Total no puede ser Cero",
+                        2316: "Tipo de Pago no Definido",
+                        2317: "Exceso de Donaciones",
+                        2318: "Donación no Localizada",
+                        2561: "No Permitido luego de Descuentos/Recargos",
+                        2562: "No Permitido luego de Fase de Pago",
+                        2563: "Tipo de Item Inválido",
+                        2564: "Descripcion no puede ser Nula",
+                        2565: "Cantidad del Item (underflow)",
+                        2566: "Cantidad del Item (overflow)",
+                        2567: "Item Total (overflow)",
+                        2568: "No Permitido antes de Fase de Pago",
+                        2569: "Fase de Pago no Terminada",
+                        2570: "Fase de Pago Terminada",
+                        2571: "Monto de Pago no permitido",
+                        2572: "Monto de Desc./Rec no permitido",
+                        2573: "Valor de Donación no permitido",
+                        2574: "Vuelto no es mayor a cero",
+                        3585: "Exceso de lineas de texto NF",
+                        65535: "Error Desconocido"
+                    }
+    printerStatusErrors = [
+                        (1<<15, "Impresora Offline."),
+                        (1<<14, "Impresora con Error."),
+                        (1<<13, "Tapa de la impresora abierta"),
+                        (1<<12, "Cajón de dinero abierto."),
+                        (1<<3, "Papel no disponible."),
+                        (1<<2, "Poco papel disponible."),
+                    ]
+
     WAIT_TIME = 10
     RETRIES = 4
     WAIT_CHAR_TIME = 0.1
@@ -266,6 +374,48 @@ class EpsonChileFiscalDriver(EpsonFiscalDriver):
     NAK = chr(0x15)
     REPLY_MAP = {"CommandNumber": 2, "StatPrinter": 0, "StatFiscal": 1, "Return": 3}
     STAT_FN = lambda self, x: struct.unpack(">H", x)[0] # convertir de unsigned short
+    
+    def _parseReply( self, reply, skipStatusErrors ):
+        r = reply[2:-1] # Saco STX <Nro Seq> ... ETX
+        fields = r.split( chr(28) )
+        fields = [self._unescape(field) for field in fields]
+        print 'fields=',fields
+        printerStatus = fields[self.REPLY_MAP["StatPrinter"]]
+        fiscalStatus = fields[self.REPLY_MAP["StatFiscal"]]
+        if not skipStatusErrors:
+            self._parsePrinterStatus( printerStatus )
+            self._parseFiscalStatus( fiscalStatus )
+        # Posición 'CommandNumber' retorna si el comando se ejecuto o no...
+        # toma dos valores -> \x00\x01 = NO ejecutado | \x00\x00 = SI ejecutado
+        comandoEjecutado = fields[self.REPLY_MAP["CommandNumber"]] 
+        print 'comandoEjecutado=',comandoEjecutado
+        if comandoEjecutado=='\x00\x01':
+            returnErrorsIndex = self.STAT_FN( fields[self.REPLY_MAP["Return"]] )
+            print 'returnErrorsIndex=',returnErrorsIndex
+            if returnErrorsIndex not in self.returnErrors.keys(): 
+                self.returnErrors[returnErrorsIndex] = 'Error desconocido...'
+            raise ReturnError, self.returnErrors[returnErrorsIndex]
+        # elimino el numero de comando (por compatibilidad con Epson Arg.)
+        if "CommandNumber" in self.REPLY_MAP:
+            fields.pop(self.REPLY_MAP["CommandNumber"])
+        return fields
+
+    def _parseFiscalStatus( self, fiscalStatus ):
+        # TODO: 
+        fiscalStatus  = repr(fiscalStatus).replace('\\x','').replace("'",'') # \xc0\x80 a c080 viv
+        binario = str(bin(int(fiscalStatus, 16))[2:].zfill(16)) #c080 a 1100000010000000 vivi
+        print 'fiscalStatus=',fiscalStatus, binario
+        if binario[-12]+binario[-11]=='10':
+              raise FiscalStatusError, "Memoria fiscal llena."
+        if binario[-12]+binario[-11]=='11':
+              raise FiscalStatusError, "Memoria fiscal con desperfecto."
+
+    def _unescape(self, field): 
+        ret = []
+        for char in field:
+            if ord(char) != 0x1b:
+                 ret.append(char)
+        return "".join(ret)
 
 
 class HasarFiscalDriver( EpsonFiscalDriver ):

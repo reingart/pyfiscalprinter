@@ -7,7 +7,7 @@ if True or '--chile' in sys.argv:
     from epsonFiscal import EpsonChilePrinter
     print "Usando driver de Epson Chile"
     model = ["TM-T88III", "TM-T88IV", "TM-H6000II", "TM-H6000III"][1]
-    printer = EpsonChilePrinter(deviceFile="", model=model, dummy=False)
+    printer = EpsonChilePrinter(deviceFile="/dev/ttyUSB0", model=model, dummy=False)
 elif False or '--epson' in sys.argv:
     from epsonFiscal import EpsonPrinter
     print "Usando driver de Epson"
@@ -20,36 +20,40 @@ else:
     printer = HasarPrinter(deviceFile="COM2", model=model, dummy=False)
 
 
-print "cortando papel"
-resp = printer.cutPaper()   
+number = printer.getLastNumber("B")+1
+print "getLastNumber=", number
 raw_input()
 
-print "abriendo cajon"
-resp = printer.openDrawer()
+printReportX = printer.printReportX()
+print "printReportX=", printReportX
 raw_input()
-    
-# Obtener el último número de factura emitida
-number = printer.getLastNumber("B") + 1
-print "imprimiendo la FC ", number
 
-# Abrir un comprobante fiscal:
-if model in ("epsonlx300+", ):
-    # TODO: ajustar en openTicket
-    printer.openBillTicket("B", "Nombre y Apellido", "Direccion", "0", # nro_doc
-                           printer.DOC_TYPE_SIN_CALIFICADOR, 
-                           printer.IVA_TYPE_CONSUMIDOR_FINAL)
-else:
-    printer.openTicket()
+# ticket -----------------------------
 
-# Facturar Caramelos a $ 1,50, con 21% de IVA, 2 paquetes de cigarrillos a $ 10
-printer.addItem("CARAMELOS", 1, 1.50, 21.0, discount=0, discountDescription="")
-printer.addItem("CIGARRILLOS", 2, 10, 21.0, discount=0, discountDescription="")
+openTicket = printer.openTicket()
+print "openTicket=", openTicket
+raw_input()
 
-# Pago en efectivo. Si el importe fuera mayor la impresora va a
-# calcular el vuelto
-printer.addPayment("Efectivo", 11.50)
+addItem = printer.addItem('Nombre producto',1,100)
+print "addItem=", addItem
+raw_input()
 
-# Cerrar el comprobante fiscal
-printer.closeDocument()
+infoTicket = printer.infoTicket()
+print "infoTicket=", infoTicket
+raw_input()
 
+closeTicket = printer.closeTicket()
+print "closeTicket=", closeTicket
+raw_input()
 
+# no fiscal -----------------------------
+
+nofiscal = printer.openNonFiscalReceipt()
+print "openNonFiscalReceipt=", nofiscal
+raw_input()
+nofiscal2 = printer.printNonFiscalText('algo')
+print "printNonFiscalText=", nofiscal2
+raw_input()
+closelAnyDocument = printer.closelAnyDocument()
+print "closelAnyDocument=", closelAnyDocument
+raw_input()

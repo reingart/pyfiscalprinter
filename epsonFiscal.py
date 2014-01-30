@@ -98,9 +98,11 @@ class EpsonPrinter(PrinterInterface):
     def _sendCommand(self, commandNumber, parameters, skipStatusErrors=False):
         print "_sendCommand", commandNumber, parameters
         try:
+            """
             logging.getLogger().info("sendCommand: SEND|0x%x|%s|%s" % (commandNumber,
                 skipStatusErrors and "T" or "F",
                                                                      str(parameters)))
+            """
             return self.driver.sendCommand(commandNumber, parameters, skipStatusErrors)
         except epsonFiscalDriver.PrinterException, e:
             logging.getLogger().error("epsonFiscalDriver.PrinterException: %s" % str(e))
@@ -411,23 +413,27 @@ class EpsonChilePrinter(EpsonPrinter):
 
     # EPSON Fiscal Chile: comandos de dos bytes + extensión de dos bytes
 
-    CMD_OPEN_FISCAL_RECEIPT = None
+    CMD_OPEN_FISCAL_RECEIPT = 0x0a01
     CMD_OPEN_BILL_TICKET = None
     CMD_PRINT_TEXT_IN_FISCAL = None
-    CMD_PRINT_LINE_ITEM = None
-    CMD_PRINT_SUBTOTAL = None
-    CMD_ADD_PAYMENT = None
-    CMD_CLOSE_FISCAL_RECEIPT = None
-    CMD_DAILY_CLOSE = None
+    CMD_PRINT_LINE_ITEM = 0x0a02
+    CMD_PRINT_SUBTOTAL = 0x0a03
+    CMD_ADD_PAYMENT = 0x0a05
+    CMD_INFO_TICKET = 0X0a0a
+    CMD_CLOSE_FISCAL_RECEIPT = 0x0a06
+    CMD_DAILY_CLOSE_Z = 0x0801
+    CMD_DAILY_CLOSE_X = 0x0802
+    CMD_PRINT_REPORT_X = 0x0805
+    CMD_STATUS = 0x0001     # Información de status simple
     CMD_STATUS_REQUEST = 0x0830     # Información de acumuladores y contadores
     CMD_OPEN_DRAWER = 0x0707        # Abrir Cajón de Dinero (cajon dinero 1)
     CMD_CUT_PAPER = 0x0702          # Cortar papel
 
     CMD_SET_HEADER_TRAILER = None
 
-    CMD_OPEN_NON_FISCAL_RECEIPT = None
-    CMD_PRINT_NON_FISCAL_TEXT = None
-    CMD_CLOSE_NON_FISCAL_RECEIPT = None
+    CMD_OPEN_NON_FISCAL_RECEIPT = 0x0e01
+    CMD_PRINT_NON_FISCAL_TEXT = 0x0e02
+    CMD_CLOSE_NON_FISCAL_RECEIPT = 0x0e06
 
     CURRENT_DOC_TICKET = 1
     CURRENT_DOC_BILL_TICKET = 2
@@ -454,18 +460,132 @@ class EpsonChilePrinter(EpsonPrinter):
         self._currentDocument = None
         self._currentDocumentType = None
 
-    def openDrawer(self):
-        self._sendCommand(self.CMD_OPEN_DRAWER, ['\0\0'])
-
-    def cutPaper(self):
-        self._sendCommand(self.CMD_CUT_PAPER, ['\0\0'])
+    def getWarnings(self):
+        # estado = OK, WARNING, ERROR
+        ret = {'estado':'OK', 'ERROR':'', 'WARNING':''}
+        reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0'], False)
+        print 'getStatus reply=',reply
+        
+        """
+        TODO:
+        mascara = (1 << 10 | 1 << 11)
+        status = ( fiscalStatus & mascara ) >> 10
+        print 'status=',status, mascara
+        """
+        
+        fiscalStatus  = repr(reply[1]).replace('\\x','').replace("'",'') # \xc0\x80 a c080 viv
+        binario = str(bin(int(fiscalStatus, 16))[2:].zfill(16)) #c080 a 1100000010000000 vivi
+        print 'fiscalStatus=',fiscalStatus, binario
+        if binario[-12]+binario[-11]=='01':
+            ret['estado'] = 'WARNING'
+            ret['WARNING'] = "Memoria fiscal casi llena. "
+        if binario[-4:] not in ('0000','0010','0101','0111'): # binario[-4] == 1<<3 ?
+            ret['estado'] = 'ERROR'
+            ret['ERROR'] += "Documento abierto. "
+        if binario[-12]+binario[-11]=='10':
+            ret['estado'] = 'ERROR'
+            ret['ERROR'] += "Memoria fiscal llena. "
+        if binario[-12]+binario[-11]=='11':
+            ret['estado'] = 'ERROR'
+            ret['ERROR'] += "Memoria fiscal con desperfecto. "
+    
+        return ret
 
     def getLastNumber(self, letter):
-        reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0'], True)
-        return
+        reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0'])
+        #codigo manual + 3
+        return int(reply[10])
+
+    def openDrawer(self):
+        reply = self._sendCommand(self.CMD_OPEN_DRAWER, ['\0\0'])
+        print reply
+
+    def cutPaper(self):
+        reply = self._sendCommand(self.CMD_CUT_PAPER, ['\0\0'])
+        print reply
 
     def getLastCreditNoteNumber(self, letter):
-        reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0'], True)
-        return
+        reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0'])
+        return int(reply[15])
+
+    def closelAnyDocument(self):
+        try:
+            reply = self._sendCommand(self.CMD_CLOSE_FISCAL_RECEIPT[self._getCommandIndex()], ['\0\1','','','','','','']) #['\0\1'] > Corta papel | ['\0\0'] > No corta
+            print 'reply=',reply
+            return True
+        except:
+            pass
+        try:
+            reply = self._sendCommand(self.CMD_CLOSE_NON_FISCAL_RECEIPT, ['\0\1','','','','','','']) #['\0\1'] > Corta papel | ['\0\0'] > No corta
+            print 'reply=',reply
+            return True
+        except:
+            pass
+        return False
+
+    ###### Jornada fiscal ----------------------------------------------
+
+    def dailyCloseZ(self): # Cierre Z
+        reply = self._sendCommand(self.CMD_DAILY_CLOSE_Z, ['\0\0']) 
+        #return reply[0] # TODO: Número de Cierre Z
+        return True
+
+    def dailyCloseX(self): # Cierre X
+        reply = self._sendCommand(self.CMD_DAILY_CLOSE_X, ['\0\0']) 
+        #return reply[0] # TODO: Número de Cierre cajero
+        return True
+
+    def printReportX(self): # Imprime reporte X
+        reply = self._sendCommand(self.CMD_PRINT_REPORT_X, ['\0\0']) 
+        return True
+
+    ###### Documento fiscal ----------------------------------------------
+    #               - openTicket
+    #               - addItem
+    #               - ...
+    #               - closeTicket
+
+    def openTicket(self, defaultLetter='B'):
+        if self.model == "epsonlx300+":
+            return self.openBillTicket(defaultLetter, "CONSUMIDOR FINAL", "", None, None,
+                self.IVA_TYPE_CONSUMIDOR_FINAL)
+        else:
+            self._currentDocument = self.CURRENT_DOC_TICKET # Eliminar ???
+            return self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, ['\0\0','','']) 
+
+    def addItem(self, description, quantity, price, iva=19, discount='', discountDescription='', negative=False):
+        options = '\0\0'
+        iva = str(iva) # TODO: No se ingresa!!
+        quantityStr = str(quantity * 10000)
+        priceStr = str(price * 10000)
+        item = [options,'','','','','',description, quantityStr, priceStr, iva]
+        return self._sendCommand(self.CMD_PRINT_LINE_ITEM, item) 
+
+    def closeTicket(self):
+        subTotal = self._sendCommand(self.CMD_PRINT_SUBTOTAL, ['\0\01'])
+        print 'subTotal[4]=',subTotal[4]
+        payment = self._sendCommand(self.CMD_ADD_PAYMENT, [ '\0\0', '1', subTotal[4] ])
+        reply = self._sendCommand(self.CMD_CLOSE_FISCAL_RECEIPT, ['\0\1','','','','','','']) #['\0\1'] > Corta papel | ['\0\0'] > No corta
+        return reply
+
+    def addPayment(self, payment, tipo=1):
+        status = self._sendCommand(self.CMD_ADD_PAYMENT, ['\0\0',str(tipo),str(payment)])
+        return status
+
+    def infoTicket(self):
+        info = self._sendCommand(self.CMD_INFO_TICKET, ['\0\0'])
+        return info
+
+    ###### Documento no fiscal ----------------------------------------------
+    
+    def openNonFiscalReceipt(self, encabezado=False): #anterior no tiene variabe de entrada... compatibilidad?
+        print_encabezado = ['\0\1','',''] if encabezado else ['\0\0','','']
+        status = self._sendCommand(self.CMD_OPEN_NON_FISCAL_RECEIPT, print_encabezado)
+        self._currentDocument = self.CURRENT_DOC_NON_FISCAL
+        self._currentDocumentType = None
+        return status
+
+    def printNonFiscalText(self, text):
+        return self._sendCommand(self.CMD_PRINT_NON_FISCAL_TEXT, ['\0\0',formatText(text[:40] or " ")])
 
 
