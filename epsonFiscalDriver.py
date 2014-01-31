@@ -537,7 +537,7 @@ class DummyDriver:
         pass
 
     def sendCommand(self, commandNumber, parameters, skipStatusErrors):
-        print commandNumber, parameters, skipStatusErrors
+        print "%04x" % commandNumber, parameters, skipStatusErrors
         number = random.randint(0, 99999999)
         return ["00", "00"] + [str(number)] * 11
 
@@ -571,7 +571,7 @@ class EpsonFiscalDriverProxy:
         return ret
 
     def _sendCommand( self, commandNumber, fields, skipStatusErrors = False ):
-        commandStr = "0x" + ("00" + hex(commandNumber)[2:])[-2:].upper()
+        commandStr = "0x" + ("%04x" % commandNumber).upper()
         self.socketFile.write( "SEND|%s|%s|%s\n" % (commandStr, skipStatusErrors and "T" or "F",
                                               fields) )
         reply = self.socketFile.readline()
@@ -611,15 +611,15 @@ def runServer( printerType, fileIn, fileOut, deviceFile, speed = 9600 ):
         if not commandLine:
             break
         # Formato de comandos:
-        #  SEND|0x42|F|["asdasd", "sdfs", "sdfsd"]
+        #  SEND|0x0042|F|["asdasd", "sdfs", "sdfsd"]
         #  012345678901234567890....
         send = commandLine[0:4]
         if send != "SEND":
             continue
-        commandNumber = int(commandLine[5:9][2:], 16)
-        skipStatusErrors = commandLine[10:11]
+        commandNumber = int(commandLine[5:11][2:], 16)
+        skipStatusErrors = commandLine[12:13]
         skipStatusErrors = skipStatusErrors == "T" and True or False
-        parameters = eval(commandLine[12:].strip())
+        parameters = eval(commandLine[14:].strip())
         try:
             reply = p.sendCommand( commandNumber, parameters, skipStatusErrors )
         except PrinterException, e:
