@@ -271,14 +271,20 @@ class HasarPrinter(PrinterInterface):
         self._sendCommand(self.CMD_SET_CUSTOMER_DATA, parameters)
 
     def openBillTicket(self, type, name, address, doc, docType, ivaType):
-        self._setCustomerData(name, address, doc, docType, ivaType)
+        if self.model != "250":
+            self._setCustomerData(name, address, doc, docType, ivaType)
         if type == "A":
             type = "A"
         else:
             type = "B"
         self._currentDocument = self.CURRENT_DOC_BILL_TICKET
         self._savedPayments = []
-        return self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, [type, "T"])
+        if self.model == "250":
+            # se envia datos de comprador, comprobante original, tipo A Factura
+            name = self._formatText(name, 'customerName')
+            return self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, [name, doc, "", "", "", "", "A", chr(127), chr(127)])   
+        else:
+            return self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, [type, "T"])
 
     def openTicket(self, defaultLetter="B"):
         if self.model == "320":
