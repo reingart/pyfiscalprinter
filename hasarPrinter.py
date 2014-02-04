@@ -314,15 +314,29 @@ class HasarPrinter(PrinterInterface):
         return self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, [type, "T"])
 
     def openBillCreditTicket(self, type, name, address, doc, docType, ivaType, reference="NC"):
-        self._setCustomerData(name, address, doc, docType, ivaType)
-        if type == "A":
-            type = "R"
-        else:
-            type = "S"
         self._currentDocument = self.CURRENT_DOC_CREDIT_BILL_TICKET
         self._savedPayments = []
-        self._sendCommand(self.CMD_CREDIT_NOTE_REFERENCE, ["1", reference])
-        return self._sendCommand(self.CMD_OPEN_CREDIT_NOTE, [type, "T"])
+        if self.model != "250":
+            self._setCustomerData(name, address, doc, docType, ivaType)
+            if type == "A":
+                type = "R"
+            else:
+                type = "S"
+            self._sendCommand(self.CMD_CREDIT_NOTE_REFERENCE, ["1", reference])
+            return self._sendCommand(self.CMD_OPEN_CREDIT_NOTE, [type, "T"])
+        else:
+            # se envia datos de comprador, comprobante original, tipo A Factura
+            name = self._formatText(name, 'customerName')
+            # se divide la referencia en:
+            # * Número del comprobante original
+            # * Número de registro de la impresora fiscal que emitió el comprobante
+            # * Fecha del comprobante original (formato AAMMDD)
+            # * Hora del comprobante original (formato HHMMSS)
+            if isinstance(reference, basestring):
+                reference = reference.split(" ")
+            nro_fac, nro_reg, fecha_fac, hora_fac = reference
+            return self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, [name, doc, 
+                nro_fac, nro_reg, fecha_fac, hora_fac, "D", chr(127), chr(127)])   
 
     def openRemit(self, name, address, doc, docType, ivaType, copies=1):
         self._setCustomerData(name, address, doc, docType, ivaType)
