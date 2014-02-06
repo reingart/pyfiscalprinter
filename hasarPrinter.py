@@ -402,23 +402,25 @@ class HasarPrinter(PrinterInterface):
             sign = 'M'
         quantityStr = str(float(quantity)).replace(',', '.')
         priceUnit = price
-        priceUnitStr = str(priceUnit).replace(",", ".")
         ivaStr = str(float(iva)).replace(",", ".")
         for d in description[:-1]:
             self._sendCommand(self.CMD_PRINT_TEXT_IN_FISCAL, [self._formatText(d, 'fiscalText'), "0"])
         if self.model == "250":
+            # Esta impresora no soporta descuentos (incluir en el precio):
+            priceUnitStr = str(float(priceUnit) - float(discount) / float(quantity)).replace(",", ".")
             reply = self._sendCommand(self.CMD_PRINT_LINE_ITEM,
                         [self._formatText(description[-1], 'lineItem'), 
                          quantityStr, priceUnitStr, ivaStr, sign, barcode or ""])
         else:
+            priceUnitStr = str(priceUnit).replace(",", ".")
             reply = self._sendCommand(self.CMD_PRINT_LINE_ITEM,
                         [self._formatText(description[-1], 'lineItem'),
                          quantityStr, priceUnitStr, ivaStr, sign, "0.0", "1", "T"])
-        if discount:
-            discountStr = str(float(discount)).replace(",", ".")
-            self._sendCommand(self.CMD_LAST_ITEM_DISCOUNT,
-                [self._formatText(discountDescription, 'discountDescription'), discountStr,
-                  "m", "1", "T"])
+            if discount:
+                discountStr = str(float(discount)).replace(",", ".")
+                self._sendCommand(self.CMD_LAST_ITEM_DISCOUNT,
+                    [self._formatText(discountDescription, 'discountDescription'), discountStr,
+                      "m", "1", "T"])
         return reply
 
     def addPayment(self, description, payment):
