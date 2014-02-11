@@ -176,6 +176,7 @@ class HasarPrinter(PrinterInterface):
             logging.getLogger().info("reply: %s" % ret)
             return ret
         except epsonFiscalDriver.PrinterException, e:
+            raise
             logging.getLogger().error("epsonFiscalDriver.PrinterException: %s" % str(e))
             raise PrinterException("Error de la impresora fiscal: %s.\nComando enviado: %s" % \
                 (str(e), commandString))
@@ -314,9 +315,9 @@ class HasarPrinter(PrinterInterface):
         return self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, [type, "T"])
 
     def openBillCreditTicket(self, type, name, address, doc, docType, ivaType, reference="NC"):
-        self._currentDocument = self.CURRENT_DOC_CREDIT_BILL_TICKET
         self._savedPayments = []
         if self.model != "250":
+            self._currentDocument = self.CURRENT_DOC_CREDIT_BILL_TICKET
             self._setCustomerData(name, address, doc, docType, ivaType)
             if type == "A":
                 type = "R"
@@ -325,6 +326,7 @@ class HasarPrinter(PrinterInterface):
             self._sendCommand(self.CMD_CREDIT_NOTE_REFERENCE, ["1", reference])
             return self._sendCommand(self.CMD_OPEN_CREDIT_NOTE, [type, "T"])
         else:
+            self._currentDocument = self.CURRENT_DOC_BILL_TICKET
             # se envia datos de comprador, comprobante original, tipo A Factura
             name = self._formatText(name, 'customerName')
             # se divide la referencia en:
