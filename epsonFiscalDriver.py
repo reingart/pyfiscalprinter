@@ -76,6 +76,9 @@ class EpsonFiscalDriver:
             self._sequenceNumber = 0x20
 
     def _write( self, s ):
+        # convertir a bytes "ascii" si viene unicode:
+        if isinstance(s, unicode):
+            s = s.encode("latin1")
         debug( "_write", ", ".join( [ "%x" % ord(c) for c in s ] ) )
         self._serialPort.write( s )
 
@@ -424,6 +427,8 @@ def runServer( printerType, fileIn, fileOut, deviceFile, speed = 9600 ):
         except PrinterException, e:
             fileOut.write( "ERROR: %02d %s\n" % (e.errorNumber, str(e)) )
         except Exception, e:
+            tb = traceback.format_exception(*sys.exc_info())
+            print ''.join(tb)            
             fileOut.write( "ERROR: %02d %s\n" % (1, str(e)) )
         else:
             fileOut.write( "REPLY: %s\n" % reply )
