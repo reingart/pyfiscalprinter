@@ -80,7 +80,7 @@ def inicializar_y_capturar_excepciones(func):
     return capturar_errores_wrapper
 
 
-class ControladorFiscal:
+class PyFiscalPrinter:
     "Interfaz unificada para imprimir facturas en controladores fiscales"
     _public_methods_ = ['Conectar',
                         'AbrirComprobante', 'CerrarComprobante',
@@ -90,7 +90,7 @@ class ControladorFiscal:
     _public_attrs_ = ['Version', 'Excepcion', 'Traceback', 'LanzarExcepciones',
                     ]
         
-    _reg_progid_ = "PyControladorFiscal"
+    _reg_progid_ = "PyFiscalPrinter"
     _reg_clsid_ = "{4E214B11-424E-40F7-9869-680C9520125E}"
 
     
@@ -110,7 +110,7 @@ class ControladorFiscal:
             Printer = EpsonPrinter
         elif marca == 'hasar':
             Printer = HasarPrinter
-        dummy = False
+        dummy = True
         # instanciar la impresora fiscal
         if not equipo:
             # conexión por puerto serie
@@ -223,7 +223,7 @@ if __name__ == '__main__':
 
     if "--register" in sys.argv or "--unregister" in sys.argv:
         import win32com.server.register
-        win32com.server.register.UseCommandLine(FiscalPrinter)
+        win32com.server.register.UseCommandLine(PyFiscalPrinter)
     else:
         from ConfigParser import SafeConfigParser
 
