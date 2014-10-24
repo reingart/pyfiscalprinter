@@ -110,7 +110,7 @@ class PyFiscalPrinter:
             Printer = EpsonPrinter
         elif marca == 'hasar':
             Printer = HasarPrinter
-        dummy = True
+        dummy = puerto == "dummy"
         # instanciar la impresora fiscal
         if not equipo:
             # conexión por puerto serie
