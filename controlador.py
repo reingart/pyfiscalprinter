@@ -15,7 +15,7 @@
 __author__ = "Mariano Reingart <reingart@gmail.com>"
 __copyright__ = "Copyright (C) 2014 Mariano Reingart"
 __license__ = "GPL 3.0"
-__version__ = "1.00a"
+__version__ = "1.01a"
 
 CONFIG_FILE = "fiscal.ini"
 DEBUG = True
@@ -84,7 +84,7 @@ class PyFiscalPrinter:
     "Interfaz unificada para imprimir facturas en controladores fiscales"
     _public_methods_ = ['Conectar',
                         'AbrirComprobante', 'CerrarComprobante',
-                        'ImptrimirItem', 'ImprimirPago', 
+                        'ImprimirItem', 'ImprimirPago', 
                         'ConsultarUltNro',
                         ]
     _public_attrs_ = ['Version', 'Excepcion', 'Traceback', 'LanzarExcepciones',
@@ -146,6 +146,7 @@ class PyFiscalPrinter:
                                 94: printer.DOC_TYPE_PASAPORTE, 
                                 99: printer.DOC_TYPE_SIN_CALIFICADOR,
                               }
+        return True
 
     def DebugLog(self):
         "Devolver bitácora de depuración"
@@ -189,7 +190,7 @@ class PyFiscalPrinter:
             ret = printer.openBillCreditTicket(letra_cbte, nombre_cliente, 
                                                domicilio_cliente, nro_doc, doc_fiscal, 
                                                pos_fiscal, referencia)
-        return ret
+        return True
 
     @inicializar_y_capturar_excepciones
     def ImprimirItem(self, ds, qty, importe, alic_iva=21.):
@@ -197,18 +198,21 @@ class PyFiscalPrinter:
         ##ds = unicode(ds, "latin1") # convierto a latin1
         # Nota: no se calcula neto, iva, etc (deben venir calculados!)
         discount = discountDescription =  None
-        return self.printer.addItem(ds, float(qty), float(importe), float(alic_iva), 
+        self.printer.addItem(ds, float(qty), float(importe), float(alic_iva), 
                                     discount, discountDescription)
+        return True
 
     @inicializar_y_capturar_excepciones
     def ImprimirPago(self, ds, importe):
         "Imprime una linea con la forma de pago y monto"
-        return self.printer.addPayment(ds, float(importe))
+        self.printer.addPayment(ds, float(importe))
+        return True
 
     @inicializar_y_capturar_excepciones
     def CerrarComprobante(self):
         "Envia el comando para cerrar un comprobante Fiscal"
-        return self.printer.closeDocument()
+        self.printer.closeDocument()
+        return True
 
     @inicializar_y_capturar_excepciones
     def ConsultarUltNro(self, tipo_cbte):
@@ -216,7 +220,8 @@ class PyFiscalPrinter:
         # mapear el numero de documento según RG1361
         cbte_fiscal = self.cbte_fiscal_map[int(tipo_cbte)]
         letra_cbte = cbte_fiscal[-1] if len(cbte_fiscal) > 1 else None
-        return self.printer.getLastNumber(letra_cbte)
+        self.printer.getLastNumber(letra_cbte)
+        return True
 
 
 if __name__ == '__main__':
