@@ -15,7 +15,7 @@
 __author__ = "Mariano Reingart <reingart@gmail.com>"
 __copyright__ = "Copyright (C) 2014 Mariano Reingart"
 __license__ = "GPL 3.0"
-__version__ = "1.01a"
+__version__ = "1.02a"
 
 CONFIG_FILE = "fiscal.ini"
 DEBUG = True
@@ -55,6 +55,7 @@ import sys
 import traceback
 from cStringIO import StringIO
 from decimal import Decimal
+from functools import wraps
 
 # Drivers:
 
@@ -62,8 +63,19 @@ from epsonFiscal import EpsonPrinter
 from hasarPrinter import HasarPrinter
 
 
+try:
+    import dbus, dbus.mainloop.glib
+    import gobject
+    from dbus.service import Object, method
+except ImportError:
+    dbus = None
+    Object = object
+    method = lambda *args, **kwargs: (lambda func: func)  # decorator
+
+
 def inicializar_y_capturar_excepciones(func):
     "Decorador para inicializar y capturar errores"
+    @wraps(func)
     def capturar_errores_wrapper(self, *args, **kwargs):
         try:
             # inicializo (limpio variables)
@@ -80,7 +92,7 @@ def inicializar_y_capturar_excepciones(func):
     return capturar_errores_wrapper
 
 
-class PyFiscalPrinter:
+class PyFiscalPrinter(Object):
     "Interfaz unificada para imprimir facturas en controladores fiscales"
     _public_methods_ = ['Conectar',
                         'AbrirComprobante', 'CerrarComprobante',
@@ -92,9 +104,11 @@ class PyFiscalPrinter:
         
     _reg_progid_ = "PyFiscalPrinter"
     _reg_clsid_ = "{4E214B11-424E-40F7-9869-680C9520125E}"
-
+    DBUS_IFACE = 'ar.com.pyfiscalprinter.Interface'
     
-    def __init__(self):
+    def __init__(self, session_bus=None, object_path=None):
+        if dbus:
+            Object.__init__(self, session_bus, object_path)
         self.Version = __version__
         self.factura = None
         self.Exception = self.Traceback = ""
@@ -104,6 +118,7 @@ class PyFiscalPrinter:
         self.log = StringIO()
 
     @inicializar_y_capturar_excepciones
+    @method(DBUS_IFACE, in_signature='ssss', out_signature='b')
     def Conectar(self, marca="epson", modelo="320", puerto="COM1", equipo=None):
         "Iniciar la comunicación con la instancia del controlador fiscal"
         if marca == 'epson':
@@ -154,6 +169,7 @@ class PyFiscalPrinter:
         return msg    
 
     @inicializar_y_capturar_excepciones
+    @method(dbus_interface=DBUS_IFACE, in_signature='iiissss', out_signature='b')
     def AbrirComprobante(self, 
                          tipo_cbte=83,                              # tique
                          tipo_responsable=5,                        # consumidor final
@@ -193,6 +209,7 @@ class PyFiscalPrinter:
         return True
 
     @inicializar_y_capturar_excepciones
+    @method(dbus_interface=DBUS_IFACE, in_signature='vvvv', out_signature='b')
     def ImprimirItem(self, ds, qty, importe, alic_iva=21.):
         "Envia un item (descripcion, cantidad, etc.) a una factura"
         ##ds = unicode(ds, "latin1") # convierto a latin1
@@ -203,25 +220,27 @@ class PyFiscalPrinter:
         return True
 
     @inicializar_y_capturar_excepciones
+    @method(dbus_interface=DBUS_IFACE, in_signature='vv', out_signature='b')
     def ImprimirPago(self, ds, importe):
         "Imprime una linea con la forma de pago y monto"
         self.printer.addPayment(ds, float(importe))
         return True
 
     @inicializar_y_capturar_excepciones
+    @method(dbus_interface=DBUS_IFACE, in_signature='', out_signature='b')
     def CerrarComprobante(self):
         "Envia el comando para cerrar un comprobante Fiscal"
         self.printer.closeDocument()
         return True
 
     @inicializar_y_capturar_excepciones
+    @method(dbus_interface=DBUS_IFACE, in_signature='v', out_signature='i')
     def ConsultarUltNro(self, tipo_cbte):
         "Devuelve el último número de comprobante"
         # mapear el numero de documento según RG1361
         cbte_fiscal = self.cbte_fiscal_map[int(tipo_cbte)]
         letra_cbte = cbte_fiscal[-1] if len(cbte_fiscal) > 1 else None
-        self.printer.getLastNumber(letra_cbte)
-        return True
+        return self.printer.getLastNumber(letra_cbte)
 
 
 if __name__ == '__main__':
@@ -229,6 +248,14 @@ if __name__ == '__main__':
     if "--register" in sys.argv or "--unregister" in sys.argv:
         import win32com.server.register
         win32com.server.register.UseCommandLine(PyFiscalPrinter)
+    elif "--dbus":
+        dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+        session_bus = dbus.SessionBus()
+        name = dbus.service.BusName("ar.com.pyfiscalprinter.Service", session_bus)
+        object = PyFiscalPrinter(session_bus, '/ar/com/pyfiscalprinter/Object')
+        mainloop = gobject.MainLoop()
+        print "Running PyFiscalPrinter service."
+        mainloop.run()
     else:
         from ConfigParser import SafeConfigParser
 
