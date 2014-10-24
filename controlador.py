@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: latin-1 -*-
+# -*- coding: utf8 -*-
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by the
 # Free Software Foundation; either version 3, or (at your option) any later
@@ -169,7 +169,7 @@ class PyFiscalPrinter(Object):
         return msg    
 
     @inicializar_y_capturar_excepciones
-    @method(dbus_interface=DBUS_IFACE, in_signature='iiissss', out_signature='b')
+    @method(DBUS_IFACE, in_signature='iiissss', out_signature='b')
     def AbrirComprobante(self, 
                          tipo_cbte=83,                              # tique
                          tipo_responsable=5,                        # consumidor final
@@ -209,7 +209,7 @@ class PyFiscalPrinter(Object):
         return True
 
     @inicializar_y_capturar_excepciones
-    @method(dbus_interface=DBUS_IFACE, in_signature='vvvv', out_signature='b')
+    @method(DBUS_IFACE, in_signature='vvvv', out_signature='b')
     def ImprimirItem(self, ds, qty, importe, alic_iva=21.):
         "Envia un item (descripcion, cantidad, etc.) a una factura"
         ##ds = unicode(ds, "latin1") # convierto a latin1
@@ -220,21 +220,21 @@ class PyFiscalPrinter(Object):
         return True
 
     @inicializar_y_capturar_excepciones
-    @method(dbus_interface=DBUS_IFACE, in_signature='vv', out_signature='b')
+    @method(DBUS_IFACE, in_signature='vv', out_signature='b')
     def ImprimirPago(self, ds, importe):
         "Imprime una linea con la forma de pago y monto"
         self.printer.addPayment(ds, float(importe))
         return True
 
     @inicializar_y_capturar_excepciones
-    @method(dbus_interface=DBUS_IFACE, in_signature='', out_signature='b')
+    @method(DBUS_IFACE, in_signature='', out_signature='b')
     def CerrarComprobante(self):
         "Envia el comando para cerrar un comprobante Fiscal"
         self.printer.closeDocument()
         return True
 
     @inicializar_y_capturar_excepciones
-    @method(dbus_interface=DBUS_IFACE, in_signature='v', out_signature='i')
+    @method(DBUS_IFACE, in_signature='v', out_signature='i')
     def ConsultarUltNro(self, tipo_cbte):
         "Devuelve el último número de comprobante"
         # mapear el numero de documento según RG1361

@@ -12,14 +12,14 @@ error_reporting(-1);
 
 try {
 
-	# Crear objeto interface con el componente del controlador fiscal:
-	if (@class_exists('COM')) {
-	    echo "creando interface ...";
-		$ctrl = new COM('PyFiscalPrinter') or die("No se puede crear el objeto");
-	    echo "interface creada version {$ctrl->Version}\n";
+    # Crear objeto interface con el componente del controlador fiscal:
+    if (@class_exists('COM')) {
+        echo "creando interface ...";
+        $ctrl = new COM('PyFiscalPrinter') or die("No se puede crear el objeto");
+        echo "interface creada version {$ctrl->Version}\n";
         # habilitar excecpciones (capturarlas con un bloque try/except), ver abajo:
         $ctrl->LanzarExcepciones = true;
-	} else if (@class_exists('Dbus')) {
+    } else if (@class_exists('Dbus')) {
         $dbus = new Dbus( Dbus::BUS_SESSION, true );
         $ctrl = $dbus->createProxy("ar.com.pyfiscalprinter.Service",  
                                    "/ar/com/pyfiscalprinter/Object",  
@@ -85,7 +85,7 @@ try {
     echo "CerrarComprobante = {$ok}\n";
 
 } catch (Exception $e) {
-	echo 'Excepción: ',  $e->getMessage(), "\n";
+    echo 'Excepción: ',  $e->getMessage(), "\n";
 }
 
 echo "Finalizado\n";
