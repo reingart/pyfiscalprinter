@@ -38,14 +38,13 @@ Opciones:
   --licencia: muestra la licencia del programa
 
   --debug: modo depuración (detalla y confirma las operaciones)
-  --formato: muestra el formato de los archivos de entrada/salida
   --ult: consulta y devuelve el último número de comprobante impreso
   --prueba: genera y autoriza una factura de prueba (no usar en producción!)
-  --cargar: carga un archivo de entrada y lo procesa
-  --grabar: graba un archivo de salida con los datos de los comprobantes procesados
-  --dbf: utiliza tablas DBF en lugar del archivo de entrada TXT
 
-Ver rece.ini para parámetros de configuración "
+  --dbus: inicia el servicio y exporta el componente (Linux)
+  --register: registra el componente (Windows)
+
+Ver fiscal.ini para parámetros de configuración "
 """
 
 import datetime
@@ -132,7 +131,7 @@ class PyFiscalPrinter(Object):
             printer = Printer(deviceFile=puerto, model=modelo, dummy=dummy)
         else:
             # conexion por proxy TCP/IP
-            printer = driver(model=modelo, host=equipo, port=int(puerto), dummy=dummy)
+            printer = Printer(model=modelo, host=equipo, port=int(puerto), dummy=dummy)
         self.printer = printer
         self.cbte_fiscal_map = {
                                 1: 'FA', 2: 'NDA', 3: 'NCA', 
@@ -325,5 +324,3 @@ if __name__ == '__main__':
 
             ok = controlador.ImprimirPago("efectivo", importe)
             ok = controlador.CerrarComprobante()
-            
-
