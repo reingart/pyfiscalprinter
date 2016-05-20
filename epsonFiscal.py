@@ -33,7 +33,11 @@ def formatText(text):
 class DummyDriver:
 
     def __init__(self):
-        self.number = int(raw_input("Ingrese el número de la última factura: "))
+        try:
+            self.number = int(raw_input("Ingrese el número de la última factura: "))
+        except EOFError:
+            # iniciar desde 0 (ejecutando sin stdin)
+            self.number = 0
 
     def close(self):
         pass
