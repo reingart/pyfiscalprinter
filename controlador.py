@@ -15,7 +15,7 @@
 __author__ = "Mariano Reingart <reingart@gmail.com>"
 __copyright__ = "Copyright (C) 2014 Mariano Reingart"
 __license__ = "GPL 3.0"
-__version__ = "1.02b"
+__version__ = "1.03a"
 
 CONFIG_FILE = "fiscal.ini"
 DEBUG = True
@@ -44,11 +44,14 @@ Opciones:
   --dbus: inicia el servicio y exporta el componente (Linux)
   --register: registra el componente (Windows)
 
+Sin parámetros, se procesará el archivo de entrada (factura.json)
+
 Ver fiscal.ini para parámetros de configuración "
 """
 
 import datetime
 import decimal
+import json
 import os
 import sys
 import traceback
@@ -112,7 +115,6 @@ class PyFiscalPrinter(Object):
         self.factura = None
         self.Exception = self.Traceback = ""
         self.LanzarExcepciones = False
-        self.factura = {}
         self.printer = None
         self.log = StringIO()
 
@@ -177,7 +179,15 @@ class PyFiscalPrinter(Object):
                          referencia=None,                           # comprobante original (ND/NC)
                          **kwargs
                          ):
-        "Creo un objeto factura (internamente)"
+        "Creo un objeto factura (internamente) e imprime el encabezado"
+        # crear la estructura interna
+        self.factura = {"encabezado": dict(tipo_cbte=tipo_cbte,
+                                           tipo_responsable=tipo_responsable,
+                                           tipo_doc=tipo_doc, nro_doc=nro_doc,
+                                           nombre_cliente=nombre_cliente, 
+                                           domicilio_cliente=domicilio_cliente,
+                                           referencia=referencia),
+                        "items": [], "pagos": []}
         printer = self.printer
         # mapear el tipo de comprobante según RG1785/04:
         cbte_fiscal = self.cbte_fiscal_map[int(tipo_cbte)]
@@ -211,6 +221,8 @@ class PyFiscalPrinter(Object):
     @method(DBUS_IFACE, in_signature='vvvv', out_signature='b')
     def ImprimirItem(self, ds, qty, importe, alic_iva=21.):
         "Envia un item (descripcion, cantidad, etc.) a una factura"
+        self.factura["items"].append(dict(ds=ds, qty=qty, 
+                                          importe=importe, alic_iva=alic_iva))
         ##ds = unicode(ds, "latin1") # convierto a latin1
         # Nota: no se calcula neto, iva, etc (deben venir calculados!)
         discount = discountDescription =  None
@@ -222,6 +234,7 @@ class PyFiscalPrinter(Object):
     @method(DBUS_IFACE, in_signature='vv', out_signature='b')
     def ImprimirPago(self, ds, importe):
         "Imprime una linea con la forma de pago y monto"
+        self.factura["pagos"].append(dict(ds=ds, importe=importe))
         self.printer.addPayment(ds, float(importe))
         return True
 
@@ -324,3 +337,21 @@ if __name__ == '__main__':
 
             ok = controlador.ImprimirPago("efectivo", importe)
             ok = controlador.CerrarComprobante()
+            
+            with open(conf.get("entrada", "factura.json"), "w") as f:
+                json.dump(controlador.factura, f, 
+                          indent=4, separators=(',', ': '))
+
+        else:
+            # leer y procesar una factura en formato JSON
+            print("Iniciando procesamiento...")
+            with open(conf.get("entrada", "factura.json"), "r") as f:
+                factura = json.load(f)
+            ok = controlador.AbrirComprobante(**factura["encabezado"])
+            for item in factura["items"]:
+                ok = controlador.ImprimirItem(**item)
+            for pago in factura["pagos"]:
+                ok = controlador.ImprimirPago(**pago)
+            ok = controlador.CerrarComprobante()
+            print "Hecho."
+
