@@ -15,7 +15,7 @@
 __author__ = "Mariano Reingart <reingart@gmail.com>"
 __copyright__ = "Copyright (C) 2014 Mariano Reingart"
 __license__ = "GPL 3.0"
-__version__ = "1.02a"
+__version__ = "1.02b"
 
 CONFIG_FILE = "fiscal.ini"
 DEBUG = True
@@ -247,7 +247,7 @@ if __name__ == '__main__':
     if "--register" in sys.argv or "--unregister" in sys.argv:
         import win32com.server.register
         win32com.server.register.UseCommandLine(PyFiscalPrinter)
-    elif "--dbus":
+    elif "--dbus" in sys.argv:
         dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
         session_bus = dbus.SessionBus()
         name = dbus.service.BusName("ar.com.pyfiscalprinter.Service", session_bus)
@@ -280,12 +280,12 @@ if __name__ == '__main__':
             print LICENCIA
             sys.exit(0)
             
-        controlador = ControladorFiscal()
+        controlador = PyFiscalPrinter()
         controlador.LanzarExcepciones = True
 
         marca = conf.get("marca", "epson")
         modelo = conf.get("modelo", "epsonlx300+")
-        puerto = conf.get("puerto", "COM2")
+        puerto = conf.get("puerto", "dummy")
         equipo = conf.get("equipo", "")
         controlador.Conectar(marca, modelo, puerto, equipo)
 
