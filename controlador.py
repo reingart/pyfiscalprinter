@@ -380,7 +380,10 @@ if __name__ == '__main__':
                 if "subtotal" in factura:
                     print "Cant.Articulos:", controlador.factura["qty"]
                     print "Subtotal:", controlador.factura["subtotal"]  
-                    print "IVA liq.:", controlador.factura["imp_iva"], type(controlador.factura["subtotal"])
+                    print "IVA liq.:", controlador.factura["imp_iva"]
 
+            with open(conf.get("salida", "factura.json"), "w") as f:
+                json.dump(controlador.factura, f, 
+                          indent=4, separators=(',', ': '))
             print "Hecho."
 
