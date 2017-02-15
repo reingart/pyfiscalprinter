@@ -422,6 +422,13 @@ class HasarPrinter(PrinterInterface):
         if not self.model in ("320", "615"):
             self._sendCommand(self.CMD_OPEN_DRAWER, [])
 
+    def subtotal(self, print_text=True, display=True, text=""):
+        if self._currentDocument in (self.CURRENT_DOC_TICKET, self.CURRENT_DOC_BILL_TICKET,
+                self.CURRENT_DOC_CREDIT_BILL_TICKET, self.CURRENT_DOC_CREDIT_TICKET):
+            status = self._sendCommand(self.CMD_PRINT_SUBTOTAL, ["P" if print_text else "O", "X", "1" if display else "0"])
+            return status
+        raise NotImplementedError
+
     def dailyClose(self, type):
         reply = self._sendCommand(self.CMD_DAILY_CLOSE, [type])
         return reply[2:]

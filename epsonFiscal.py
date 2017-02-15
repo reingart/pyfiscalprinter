@@ -346,6 +346,13 @@ class EpsonPrinter(PrinterInterface):
                             quantityStr, priceUnitStr, ivaStr, sign, bultosStr, "0"] + extraparams)
         return reply
 
+    def subtotal(self, print_text=True, display=False, text="Subtotal"):
+        if self._currentDocument in (self.CURRENT_DOC_TICKET, self.CURRENT_DOC_BILL_TICKET,
+                self.CURRENT_DOC_CREDIT_TICKET):
+            status = self._sendCommand(self.CMD_PRINT_SUBTOTAL[self._getCommandIndex()], ["P" if print_text else "O", text])
+            return status
+        raise NotImplementedError
+
     def dailyClose(self, type):
         reply = self._sendCommand(self.CMD_DAILY_CLOSE, [type, "P"])
         return reply[2:]

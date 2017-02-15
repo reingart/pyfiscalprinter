@@ -98,7 +98,7 @@ class PyFiscalPrinter(Object):
     "Interfaz unificada para imprimir facturas en controladores fiscales"
     _public_methods_ = ['Conectar',
                         'AbrirComprobante', 'CerrarComprobante',
-                        'ImprimirItem', 'ImprimirPago', 
+                        'ImprimirItem', 'ImprimirPago', 'Subtotal',
                         'ConsultarUltNro',
                         ]
     _public_attrs_ = ['Version', 'Excepcion', 'Traceback', 'LanzarExcepciones',
@@ -240,6 +240,25 @@ class PyFiscalPrinter(Object):
 
     @inicializar_y_capturar_excepciones
     @method(DBUS_IFACE, in_signature='', out_signature='b')
+    def Subtotal(self, imprimir=True):
+        "Devuelve el subtotal y lo imprime (opcional)"
+        ret = self.printer.subtotal(imprimir)
+        print ret
+        if len(ret) == 10:      # epson
+            qty = int(ret[3])
+            subtotal = str(decimal.Decimal(ret[4]) / decimal.Decimal("100.000"))
+            imp_iva = str(decimal.Decimal(ret[5]) / decimal.Decimal("100.000"))
+        elif len(ret) == 8:     # hasar
+            qty = ret[2]
+            subtotal = ret[3]
+            imp_iva = ret[4]
+        self.factura["subtotal"] = subtotal
+        self.factura["imp_iva"] = imp_iva
+        self.factura["qty"] = qty
+        return True
+
+    @inicializar_y_capturar_excepciones
+    @method(DBUS_IFACE, in_signature='', out_signature='b')
     def CerrarComprobante(self):
         "Envia el comando para cerrar un comprobante Fiscal"
         nro = self.printer.closeDocument()
@@ -351,10 +370,17 @@ if __name__ == '__main__':
             ok = controlador.AbrirComprobante(**factura["encabezado"])
             for item in factura["items"]:
                 ok = controlador.ImprimirItem(**item)
+            if "subtotal" in factura:
+                ok = controlador.Subtotal(imprimir=factura["subtotal"]) 
             for pago in factura["pagos"]:
                 ok = controlador.ImprimirPago(**pago)
             ok = controlador.CerrarComprobante()
             if ok:
                 print "Nro. Cbte. impreso:", controlador.factura["nro_cbte"]
+                if "subtotal" in factura:
+                    print "Cant.Articulos:", controlador.factura["qty"]
+                    print "Subtotal:", controlador.factura["subtotal"]  
+                    print "IVA liq.:", controlador.factura["imp_iva"], type(controlador.factura["subtotal"])
+
             print "Hecho."
 
