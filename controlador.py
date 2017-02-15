@@ -242,7 +242,8 @@ class PyFiscalPrinter(Object):
     @method(DBUS_IFACE, in_signature='', out_signature='b')
     def CerrarComprobante(self):
         "Envia el comando para cerrar un comprobante Fiscal"
-        self.printer.closeDocument()
+        nro = self.printer.closeDocument()
+        self.factura["nro_cbte"] = nro
         return True
 
     @inicializar_y_capturar_excepciones
@@ -353,5 +354,7 @@ if __name__ == '__main__':
             for pago in factura["pagos"]:
                 ok = controlador.ImprimirPago(**pago)
             ok = controlador.CerrarComprobante()
+            if ok:
+                print "Nro. Cbte. impreso:", controlador.factura["nro_cbte"]
             print "Hecho."
 
