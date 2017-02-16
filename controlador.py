@@ -15,7 +15,7 @@
 __author__ = "Mariano Reingart <reingart@gmail.com>"
 __copyright__ = "Copyright (C) 2014 Mariano Reingart"
 __license__ = "GPL 3.0"
-__version__ = "1.03a"
+__version__ = "1.05a"
 
 CONFIG_FILE = "fiscal.ini"
 DEBUG = True
@@ -99,7 +99,7 @@ class PyFiscalPrinter(Object):
     _public_methods_ = ['Conectar',
                         'AbrirComprobante', 'CerrarComprobante',
                         'ImprimirItem', 'ImprimirPago', 'Subtotal',
-                        'ConsultarUltNro',
+                        'ConsultarUltNro', 'CierreDiario',
                         ]
     _public_attrs_ = ['Version', 'Excepcion', 'Traceback', 'LanzarExcepciones',
                     ]
@@ -274,6 +274,12 @@ class PyFiscalPrinter(Object):
         letra_cbte = cbte_fiscal[-1] if len(cbte_fiscal) > 1 else None
         return self.printer.getLastNumber(letra_cbte)
 
+    @inicializar_y_capturar_excepciones
+    @method(DBUS_IFACE, in_signature='s', out_signature='i')
+    def CierreDiario(self, tipo):
+        "Realiza el cierre diario, reporte Z o X"
+        return self.printer.dailyClose(tipo)
+
 
 if __name__ == '__main__':
 
@@ -322,7 +328,15 @@ if __name__ == '__main__':
         equipo = conf.get("equipo", "")
         controlador.Conectar(marca, modelo, puerto, equipo)
 
-        if '--ult' in sys.argv:
+        if '--cierre' in sys.argv:
+            i = sys.argv.index("--cierre")
+            if i+1 < len(sys.argv):
+               tipo = sys.argv[i+1]
+            else:
+               tipo = raw_input("Tipo de cierre: ") or "Z"
+            print "CierreDiario:", controlador.CierreDiario(tipo.upper())
+        
+        elif '--ult' in sys.argv:
             print "Consultar ultimo numero:"
             i = sys.argv.index("--ult")
             if i+1 < len(sys.argv):
@@ -332,7 +346,7 @@ if __name__ == '__main__':
             ult = controlador.ConsultarUltNro(tipo_cbte)
             print "Ultimo Nro de Cbte:", ult
 
-        if '--prueba' in sys.argv:
+        elif '--prueba' in sys.argv:
             # creo una factura de ejemplo
             tipo_cbte = 6
             tipo_doc = 80; nro_doc = "20267565393"
