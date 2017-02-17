@@ -15,7 +15,7 @@
 __author__ = "Mariano Reingart <reingart@gmail.com>"
 __copyright__ = "Copyright (C) 2014 Mariano Reingart"
 __license__ = "GPL 3.0"
-__version__ = "1.05b"
+__version__ = "1.06a"
 
 CONFIG_FILE = "fiscal.ini"
 DEBUG = True
@@ -100,6 +100,7 @@ class PyFiscalPrinter(Object):
                         'AbrirComprobante', 'CerrarComprobante',
                         'ImprimirItem', 'ImprimirPago', 'Subtotal',
                         'ConsultarUltNro', 'CierreDiario',
+                        'FijarTextoCabecera', 'FijarTextoPie',
                         ]
     _public_attrs_ = ['Version', 'Excepcion', 'Traceback', 'LanzarExcepciones',
                     ]
@@ -117,6 +118,8 @@ class PyFiscalPrinter(Object):
         self.LanzarExcepciones = False
         self.printer = None
         self.log = StringIO()
+        self.header = []
+        self.trailer = []
 
     @inicializar_y_capturar_excepciones
     @method(DBUS_IFACE, in_signature='ssss', out_signature='b')
@@ -198,6 +201,9 @@ class PyFiscalPrinter(Object):
         doc_fiscal = self.doc_fiscal_map[int(tipo_doc)]
         # cancelar y volver a un estado conocido
         printer.cancelAnyDocument()
+        # enviar texto de cabecera y pie de pagina:
+        printer.setHeader(self.header)
+        printer.setTrailer(self.trailer)
         # enviar los comandos de apertura de comprobante fiscal:
         if cbte_fiscal.startswith('T'):
             if letra_cbte:
@@ -280,6 +286,24 @@ class PyFiscalPrinter(Object):
         "Realiza el cierre diario, reporte Z o X"
         return self.printer.dailyClose(tipo)
 
+    @inicializar_y_capturar_excepciones
+    @method(DBUS_IFACE, in_signature='vi', out_signature='b')
+    def FijarTextoCabecera(self, ds, linea=None):
+        if linea:
+            self.header[linea] = ds
+        else:
+            self.header.append(ds)
+        return True
+
+    @inicializar_y_capturar_excepciones
+    @method(DBUS_IFACE, in_signature='vi', out_signature='b')
+    def FijarTextoPie(self, ds, linea=None):
+        if linea:
+            self.trailer[linea] = ds
+        else:
+            self.trailer.append(ds)
+        return True
+
 
 if __name__ == '__main__':
 
@@ -327,6 +351,13 @@ if __name__ == '__main__':
         puerto = conf.get("puerto", "dummy")
         equipo = conf.get("equipo", "")
         controlador.Conectar(marca, modelo, puerto, equipo)
+
+        if config.has_section('CABECERA'):
+            for linea, ds in sorted(config.items('CABECERA')):
+                controlador.FijarTextoCabecera(ds)
+        if config.has_section('PIE'):
+            for linea, ds in sorted(config.items('PIE')):
+                controlador.FijarTextoPie(ds)
 
         if '--cierre' in sys.argv:
             i = sys.argv.index("--cierre")
