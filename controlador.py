@@ -15,7 +15,7 @@
 __author__ = "Mariano Reingart <reingart@gmail.com>"
 __copyright__ = "Copyright (C) 2014 Mariano Reingart"
 __license__ = "GPL 3.0"
-__version__ = "1.05a"
+__version__ = "1.05b"
 
 CONFIG_FILE = "fiscal.ini"
 DEBUG = True
@@ -348,12 +348,12 @@ if __name__ == '__main__':
 
         elif '--prueba' in sys.argv:
             # creo una factura de ejemplo
-            tipo_cbte = 6
+            tipo_cbte = 6 if not "--nc" in sys.argv else 3
             tipo_doc = 80; nro_doc = "20267565393"
             nombre_cliente = 'Joao Da Silva'
             domicilio_cliente = 'Rua 76 km 34.5 Alagoas'
-            tipo_responsable = 5
-            referencia = None
+            tipo_responsable = 5 if not "--nc" in sys.argv else 1   # R.I. ("A)
+            referencia = None if not "--nc" in sys.argv else "F 1234"
             
             ok = controlador.AbrirComprobante(tipo_cbte, tipo_responsable, 
                                             tipo_doc, nro_doc,
