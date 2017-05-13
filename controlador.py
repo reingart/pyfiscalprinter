@@ -15,7 +15,7 @@
 __author__ = "Mariano Reingart <reingart@gmail.com>"
 __copyright__ = "Copyright (C) 2014 Mariano Reingart"
 __license__ = "GPL 3.0"
-__version__ = "1.06a"
+__version__ = "1.06b"
 
 CONFIG_FILE = "fiscal.ini"
 DEBUG = True
@@ -49,6 +49,7 @@ Sin parámetros, se procesará el archivo de entrada (factura.json)
 Ver fiscal.ini para parámetros de configuración "
 """
 
+import codecs
 import datetime
 import decimal
 import json
@@ -218,6 +219,8 @@ class PyFiscalPrinter(Object):
                                               domicilio_cliente, nro_doc, doc_fiscal, 
                                               pos_fiscal)
         elif cbte_fiscal.startswith("NC"):
+            if isinstance(referencia, unicode):
+                referencia = referencia.encode("latin1", "ignore")
             ret = printer.openBillCreditTicket(letra_cbte, nombre_cliente, 
                                                domicilio_cliente, nro_doc, doc_fiscal, 
                                                pos_fiscal, referencia)
@@ -379,10 +382,10 @@ if __name__ == '__main__':
 
         elif '--prueba' in sys.argv:
             # creo una factura de ejemplo
-            tipo_cbte = 6 if not "--nc" in sys.argv else 3
+            tipo_cbte = 83 if not "--nc" in sys.argv else 3
             tipo_doc = 80; nro_doc = "20267565393"
             nombre_cliente = 'Joao Da Silva'
-            domicilio_cliente = 'Rua 76 km 34.5 Alagoas'
+            domicilio_cliente = 'Rua 76 km 34.5'
             tipo_responsable = 5 if not "--nc" in sys.argv else 1   # R.I. ("A)
             referencia = None if not "--nc" in sys.argv else "F 1234"
             
@@ -404,6 +407,7 @@ if __name__ == '__main__':
             ok = controlador.CerrarComprobante()
             
             with open(conf.get("entrada", "factura.json"), "w") as f:
+                f = codecs.getwriter(conf.get("encoding", "utf8"))(f)
                 json.dump(controlador.factura, f, 
                           indent=4, separators=(',', ': '))
 
@@ -411,6 +415,7 @@ if __name__ == '__main__':
             # leer y procesar una factura en formato JSON
             print("Iniciando procesamiento...")
             with open(conf.get("entrada", "factura.json"), "r") as f:
+                f = codecs.getreader(conf.get("encoding", "utf8"))(f)
                 factura = json.load(f)
             ok = controlador.AbrirComprobante(**factura["encabezado"])
             for item in factura["items"]:
@@ -428,6 +433,7 @@ if __name__ == '__main__':
                     print "IVA liq.:", controlador.factura["imp_iva"]
 
             with open(conf.get("salida", "factura.json"), "w") as f:
+                f = codecs.getwriter(conf.get("encoding", "utf8"))(f)
                 json.dump(controlador.factura, f, 
                           indent=4, separators=(',', ': '))
             print "Hecho."
