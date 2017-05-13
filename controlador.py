@@ -15,7 +15,7 @@
 __author__ = "Mariano Reingart <reingart@gmail.com>"
 __copyright__ = "Copyright (C) 2014 Mariano Reingart"
 __license__ = "GPL 3.0"
-__version__ = "1.06b"
+__version__ = "1.06c"
 
 CONFIG_FILE = "fiscal.ini"
 DEBUG = True
@@ -281,7 +281,10 @@ class PyFiscalPrinter(Object):
         # mapear el numero de documento según RG1361
         cbte_fiscal = self.cbte_fiscal_map[int(tipo_cbte)]
         letra_cbte = cbte_fiscal[-1] if len(cbte_fiscal) > 1 else None
-        return self.printer.getLastNumber(letra_cbte)
+        if cbte_fiscal.startswith("NC"):
+            return self.printer.getLastCreditNoteNumber(letra_cbte)
+        else:
+            return self.printer.getLastNumber(letra_cbte)
 
     @inicializar_y_capturar_excepciones
     @method(DBUS_IFACE, in_signature='s', out_signature='i')
