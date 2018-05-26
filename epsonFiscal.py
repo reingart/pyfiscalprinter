@@ -426,14 +426,14 @@ class EpsonExtPrinter(EpsonPrinter):
 
     # EPSON Fiscal Segunada Generación: comandos de dos bytes + extensión de dos bytes
 
-    CMD_OPEN_FISCAL_RECEIPT = 0x0a01
-    CMD_OPEN_BILL_TICKET = None
+    # Comandos comprobantes: Tique CF, Tique-Fact / Nota Débito A B C M, Nota Crédito A B C M
+    CMD_OPEN_FISCAL_RECEIPT = (0x0a01, 0x0b01, 0x0d01)
     CMD_PRINT_TEXT_IN_FISCAL = None
-    CMD_PRINT_LINE_ITEM = 0x0a02
-    CMD_PRINT_SUBTOTAL = 0x0a03
-    CMD_ADD_PAYMENT = 0x0a05
-    CMD_INFO_TICKET = 0X0a0a
-    CMD_CLOSE_FISCAL_RECEIPT = 0x0a06
+    CMD_PRINT_LINE_ITEM = (0x0a02, 0x0b02, 0x0d02)
+    CMD_PRINT_SUBTOTAL = (0x0a03, 0x0b03, 0x0d03)
+    CMD_ADD_PAYMENT = (0x0a05, 0x0b05, 0x0d05)
+    CMD_INFO_TICKET = (0X0a0a, 0x0b0a, 0x0d0a)
+    CMD_CLOSE_FISCAL_RECEIPT = (0x0a06, 0x0b06, 0x0d06)
     CMD_DAILY_CLOSE_Z = 0x0801
     CMD_DAILY_CLOSE_X = 0x0802
     CMD_PRINT_REPORT_X = 0x0805
@@ -558,13 +558,23 @@ class EpsonExtPrinter(EpsonPrinter):
     #               - ...
     #               - closeTicket
 
-    def openTicket(self, defaultLetter='B'):
-        if self.model == "epsonlx300+":
-            return self.openBillTicket(defaultLetter, "CONSUMIDOR FINAL", "", None, None,
-                self.IVA_TYPE_CONSUMIDOR_FINAL)
-        else:
-            self._currentDocument = self.CURRENT_DOC_TICKET # Eliminar ???
-            return self._sendCommand(self.CMD_OPEN_FISCAL_RECEIPT, ['\0\0','','']) 
+    def _getCommandIndex(self):
+        if self._currentDocument == self.CURRENT_DOC_TICKET:
+            return 0
+        elif self._currentDocument == self.CURRENT_DOC_BILL_TICKET:
+            return 1
+        elif self._currentDocument == self.CURRENT_DOC_CREDIT_TICKET:
+            return 2
+        elif self._currentDocument == self.CURRENT_DOC_NON_FISCAL:
+            return 3
+        raise "Invalid currentDocument"
+
+    def openTicket(self, defaultLetter=''):
+        "Abrir un Tique a 'CONSUMIDOR FINAL' (genérico, sin letra)"
+        self._currentDocument = self.CURRENT_DOC_TICKET
+        cmd = self.CMD_OPEN_FISCAL_RECEIPT[self._getCommandIndex()]
+        cmd_ext = '\0\0'
+        return self._sendCommand(cmd, [cmd_ext]) 
 
     def addItem(self, description, quantity, price, iva=19, discount='', discountDescription='', negative=False):
         options = '\0\0'
