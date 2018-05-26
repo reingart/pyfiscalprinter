@@ -476,6 +476,35 @@ class EpsonExtPrinter(EpsonPrinter):
         PrinterInterface.IVA_TYPE_NO_CATEGORIZADO: 'U',
     }
 
+    paymentNames = {
+        1: "Carta de credito documentario",
+        2: "Cartas de credito simple",
+        3: "Cheque",
+        4: "Cheques cancelatorios",
+        5: "Credito documentario",
+        6: "Cuenta corriente",
+        7: "Deposito",
+        8: "Efectivo",
+        9: "Endoso de cheque",
+        10: "Factura de credito",
+        11: "Garantias bancarias",
+        12: "Giros",
+        13: "Letras de cambio",
+        14: "Medios de pago de comercio exterior",
+        15: "Orden de pago documentaria",
+        16: "Orden de pago simple",
+        17: "Pago contra reembolso",
+        18: "Remesa documentaria",
+        19: "Remesa simple",
+        20: "Tarjeta de credito",
+        21: "Tarjeta de debito",
+        22: "Ticket",
+        23: "Transferencia bancaria",
+        24: "Transferencia no bancaria",
+        99: "Otros medios de pago",
+    }
+    paymentMap = dict([(v.upper(), k) for (k, v) in paymentNames.items()])
+
     models = ["TM-T900FA"]
     
     # Compatibilidad hacia atrás: asociación de letra a tipo de documento:
@@ -665,15 +694,30 @@ class EpsonExtPrinter(EpsonPrinter):
         cmd = self.CMD_PRINT_SUBTOTAL[self._getCommandIndex()]
         subTotal = self._sendCommand(cmd, ['\0\01'])
         print 'subTotal[4]=',subTotal[4]
-        cmd = self.CMD_ADD_PAYMENT[self._getCommandIndex()]
-        payment = self._sendCommand(cmd, [ '\0\0', '1', subTotal[4] ])
+        payment = self.addPayment(description="", payment=subTotal[4], code=6)
         cmd = self.CMD_CLOSE_FISCAL_RECEIPT[self._getCommandIndex()]
         reply = self._sendCommand(cmd, ['\0\1','','','','','','']) #['\0\1'] > Corta papel | ['\0\0'] > No corta
         return reply
 
-    def addPayment(self, payment, tipo=1):
+    def addPayment(self, description, payment, code=None, qty=1, detail=""):
+        # determinar el código de la forma de pago:
+        if not code:
+            code = self.paymentMap.get(description, None)
+            if code:
+                detail = ""
+            else:
+                detail = description
+                code = 99
+            description = ""
+        if not isinstance(payment, basestring):
+            payment = str(payment * 1000)
         cmd = self.CMD_ADD_PAYMENT[self._getCommandIndex()]
-        status = self._sendCommand(cmd, ['\0\0',str(tipo),str(payment)])
+        parameters = [formatText(description)[:20],
+                      formatText(description)[20:], 
+                      "" if not qty else str(qty), "", "", code,
+                      payment]
+        assert len(parameters) == 7
+        status = self._sendCommand(cmd, ['\0\0'] + parameters)
         return status
 
     def infoTicket(self):

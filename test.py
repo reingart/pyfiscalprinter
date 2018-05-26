@@ -38,6 +38,10 @@ addItem = printer.addItem('Nombre producto',1,100)
 print "addItem=", addItem
 raw_input()
 
+addPayment = printer.addPayment("Efectivo" , 200)
+print "addPayment=", addPayment
+raw_input()
+
 infoTicket = printer.infoTicket()
 print "infoTicket=", infoTicket
 raw_input()
