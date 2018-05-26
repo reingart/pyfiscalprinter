@@ -1,0 +1,25 @@
+{
+    "encabezado": {
+        "tipo_cbte": 6,
+        "referencia": null,
+        "nro_doc": "20267565393",
+        "domicilio_cliente": "Rua 76 km 34.5 Alagoas",
+        "tipo_doc": 80,
+        "nombre_cliente": "Joao Da Silva",
+        "tipo_responsable": 5
+    },
+    "items": [
+        {
+            "alic_iva": 21.0,
+            "importe": 121.0,
+            "ds": "Descripcion del producto P0001",
+            "qty": 1.0
+        }
+    ],
+    "pagos": [
+        {
+            "ds": "efectivo",
+            "importe": 121.0
+        }
+    ]
+}

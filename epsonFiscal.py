@@ -33,7 +33,11 @@ def formatText(text):
 class DummyDriver:
 
     def __init__(self):
-        self.number = int(raw_input("Ingrese el número de la última factura: "))
+        try:
+            self.number = int(raw_input("Ingrese el número de la última factura: "))
+        except EOFError:
+            # iniciar desde 0 (ejecutando sin stdin)
+            self.number = 0
 
     def close(self):
         pass
@@ -343,6 +347,13 @@ class EpsonPrinter(PrinterInterface):
                           [formatText(description[:20]),
                             quantityStr, priceUnitStr, ivaStr, sign, bultosStr, "0"] + extraparams)
         return reply
+
+    def subtotal(self, print_text=True, display=False, text="Subtotal"):
+        if self._currentDocument in (self.CURRENT_DOC_TICKET, self.CURRENT_DOC_BILL_TICKET,
+                self.CURRENT_DOC_CREDIT_TICKET):
+            status = self._sendCommand(self.CMD_PRINT_SUBTOTAL[self._getCommandIndex()], ["P" if print_text else "O", text])
+            return status
+        raise NotImplementedError
 
     def dailyClose(self, type):
         reply = self._sendCommand(self.CMD_DAILY_CLOSE, [type, "P"])
