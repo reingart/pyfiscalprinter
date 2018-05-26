@@ -651,13 +651,14 @@ class EpsonExtPrinter(EpsonPrinter):
         cmd_ext = '\0\0'
         return self._sendCommand(cmd, [cmd_ext]) 
 
-    def addItem(self, description, quantity, price, iva=19, discount='', discountDescription='', negative=False):
+    def addItem(self, description, quantity, price, iva=21, discount='', discountDescription='', negative=False):
         cmd = self.CMD_PRINT_LINE_ITEM[self._getCommandIndex()]
         options = '\0\0'
         iva = str(iva) # TODO: No se ingresa!!
         quantityStr = str(quantity * 10000)
         priceStr = str(price * 10000)
-        item = [options,'','','','','',description, quantityStr, priceStr, iva]
+        item = [options,'','','','',description, quantityStr, priceStr, iva]
+        assert len(item) == 9
         return self._sendCommand(cmd, item) 
 
     def closeTicket(self):
