@@ -454,6 +454,10 @@ class EpsonExtPrinter(EpsonPrinter):
     CURRENT_DOC_NON_FISCAL = 3
 
     models = ["TM-T900FA"]
+    
+    # Compatibilidad hacia atrás: asociación de letra a tipo de documento:
+    LETTER_TICKET_MAP = {'': 83, 'A': 81, 'B': 82, 'C': 111, 'M': 118}
+    LETTER_CREDIT_MAP = {'': 110, 'A': 112, 'B': 113, 'C': 114, 'M': 119}
 
     def __init__(self, deviceFile=None, speed=9600, host=None, port=None, dummy=False, model=None):
         try:
@@ -505,9 +509,10 @@ class EpsonExtPrinter(EpsonPrinter):
         return ret
 
     def getLastNumber(self, letter):
-        reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0'])
+        tipo_cbte = str(self.LETTER_TICKET_MAP[letter])
+        reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0', tipo_cbte])
         #codigo manual + 3
-        return int(reply[10])
+        return int(reply[5 + 3])
 
     def openDrawer(self):
         reply = self._sendCommand(self.CMD_OPEN_DRAWER, ['\0\0'])
@@ -518,8 +523,9 @@ class EpsonExtPrinter(EpsonPrinter):
         print reply
 
     def getLastCreditNoteNumber(self, letter):
-        reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0'])
-        return int(reply[15])
+        tipo_cbte = str(self.LETTER_CREDIT_MAP[letter])
+        reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0', tipo_cbte])
+        return int(reply[5 + 3])
 
     def closelAnyDocument(self):
         try:
