@@ -691,12 +691,16 @@ class EpsonExtPrinter(EpsonPrinter):
         return self._sendCommand(cmd, item) 
 
     def closeTicket(self):
-        cmd = self.CMD_PRINT_SUBTOTAL[self._getCommandIndex()]
-        subTotal = self._sendCommand(cmd, ['\0\01'])
-        print 'subTotal[4]=',subTotal[4]
-        payment = self.addPayment(description="", payment=subTotal[4], code=6)
         cmd = self.CMD_CLOSE_FISCAL_RECEIPT[self._getCommandIndex()]
-        reply = self._sendCommand(cmd, ['\0\1','','','','','','']) #['\0\1'] > Corta papel | ['\0\0'] > No corta
+        # 0x0001 Corta papel
+        # 0x0002 Devuelve respuesta electronica.
+        # 0x0004 Imprime "Su Vuelto" con atributos
+        # 0x0010 Utiliza cuenta corriente en pago automatico
+        if self._currentDocument != self.CURRENT_DOC_CREDIT_TICKET:
+            cmd_ext = '\x00\x17'
+        else:
+            cmd_ext = '\x00\x03'
+        reply = self._sendCommand(cmd, [cmd_ext,'','','','','',''])
         return reply
 
     def addPayment(self, description, payment, code=None, qty=1, detail=""):
