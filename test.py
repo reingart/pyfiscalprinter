@@ -3,11 +3,11 @@
 import sys
 
 # Crear el controlador para la impresora fiscal:
-if True or '--chile' in sys.argv:
-    from epsonFiscal import EpsonChilePrinter
-    print "Usando driver de Epson Chile"
-    model = ["TM-T88III", "TM-T88IV", "TM-H6000II", "TM-H6000III"][1]
-    printer = EpsonChilePrinter(deviceFile="/dev/ttyUSB0", model=model, dummy=False)
+if True or '--epsonext' in sys.argv:
+    from epsonFiscal import EpsonExtPrinter
+    print "Usando driver de Epson Protocolo Extendido (2da Gen)"
+    model = ["TM-T900FA"][0]
+    printer = EpsonExtPrinter(deviceFile="/dev/ttyUSB0", model=model, dummy=True)
 elif False or '--epson' in sys.argv:
     from epsonFiscal import EpsonPrinter
     print "Usando driver de Epson"

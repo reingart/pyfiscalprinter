@@ -419,10 +419,12 @@ class EpsonPrinter(PrinterInterface):
         self.driver = None
         
 
-class EpsonChilePrinter(EpsonPrinter):
+class EpsonExtPrinter(EpsonPrinter):
+    "Protocolo Extendido. Segunda Generación. Nueva Tecnología RG 3561/13 AFIP"
+
     DEBUG = True
 
-    # EPSON Fiscal Chile: comandos de dos bytes + extensión de dos bytes
+    # EPSON Fiscal Segunada Generación: comandos de dos bytes + extensión de dos bytes
 
     CMD_OPEN_FISCAL_RECEIPT = 0x0a01
     CMD_OPEN_BILL_TICKET = None
@@ -451,7 +453,7 @@ class EpsonChilePrinter(EpsonPrinter):
     CURRENT_DOC_CREDIT_TICKET = 4
     CURRENT_DOC_NON_FISCAL = 3
 
-    models = ["TM-T88III", "TM-T88IV", "TM-H6000II", "TM-H6000III"]
+    models = ["TM-T900FA"]
 
     def __init__(self, deviceFile=None, speed=9600, host=None, port=None, dummy=False, model=None):
         try:
@@ -465,7 +467,7 @@ class EpsonChilePrinter(EpsonPrinter):
         except Exception, e:
             raise FiscalPrinterError("Imposible establecer comunicación.", e)
         if not model:
-            self.model = "TM-T88IV"
+            self.model = "TM-T900FA"
         else:
             self.model = model
         self._currentDocument = None
