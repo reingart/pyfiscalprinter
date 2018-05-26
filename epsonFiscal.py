@@ -652,26 +652,32 @@ class EpsonExtPrinter(EpsonPrinter):
         return self._sendCommand(cmd, [cmd_ext]) 
 
     def addItem(self, description, quantity, price, iva=19, discount='', discountDescription='', negative=False):
+        cmd = self.CMD_PRINT_LINE_ITEM[self._getCommandIndex()]
         options = '\0\0'
         iva = str(iva) # TODO: No se ingresa!!
         quantityStr = str(quantity * 10000)
         priceStr = str(price * 10000)
         item = [options,'','','','','',description, quantityStr, priceStr, iva]
-        return self._sendCommand(self.CMD_PRINT_LINE_ITEM, item) 
+        return self._sendCommand(cmd, item) 
 
     def closeTicket(self):
-        subTotal = self._sendCommand(self.CMD_PRINT_SUBTOTAL, ['\0\01'])
+        cmd = self.CMD_PRINT_SUBTOTAL[self._getCommandIndex()]
+        subTotal = self._sendCommand(cmd, ['\0\01'])
         print 'subTotal[4]=',subTotal[4]
-        payment = self._sendCommand(self.CMD_ADD_PAYMENT, [ '\0\0', '1', subTotal[4] ])
-        reply = self._sendCommand(self.CMD_CLOSE_FISCAL_RECEIPT, ['\0\1','','','','','','']) #['\0\1'] > Corta papel | ['\0\0'] > No corta
+        cmd = self.CMD_ADD_PAYMENT[self._getCommandIndex()]
+        payment = self._sendCommand(cmd, [ '\0\0', '1', subTotal[4] ])
+        cmd = self.CMD_CLOSE_FISCAL_RECEIPT[self._getCommandIndex()]
+        reply = self._sendCommand(cmd, ['\0\1','','','','','','']) #['\0\1'] > Corta papel | ['\0\0'] > No corta
         return reply
 
     def addPayment(self, payment, tipo=1):
-        status = self._sendCommand(self.CMD_ADD_PAYMENT, ['\0\0',str(tipo),str(payment)])
+        cmd = self.CMD_ADD_PAYMENT[self._getCommandIndex()]
+        status = self._sendCommand(cmd, ['\0\0',str(tipo),str(payment)])
         return status
 
     def infoTicket(self):
-        info = self._sendCommand(self.CMD_INFO_TICKET, ['\0\0'])
+        cmd = self.CMD_INFO_TICKET[self._getCommandIndex()]
+        info = self._sendCommand(cmd, ['\0\0'])
         return info
 
     ###### Documento no fiscal ----------------------------------------------
