@@ -453,6 +453,29 @@ class EpsonExtPrinter(EpsonPrinter):
     CURRENT_DOC_CREDIT_TICKET = 4
     CURRENT_DOC_NON_FISCAL = 3
 
+    docTypeMap = {
+        PrinterInterface.DOC_TYPE_CUIT: "T",
+        PrinterInterface.DOC_TYPE_CUIL: "L",
+        PrinterInterface.DOC_TYPE_LIBRETA_ENROLAMIENTO: 'E',
+        PrinterInterface.DOC_TYPE_LIBRETA_CIVICA: 'V',
+        PrinterInterface.DOC_TYPE_DNI: 'D',
+        PrinterInterface.DOC_TYPE_PASAPORTE: 'P',
+    }
+
+    ivaTypeMap = {
+        PrinterInterface.IVA_TYPE_RESPONSABLE_INSCRIPTO: 'I',
+        PrinterInterface.IVA_TYPE_RESPONSABLE_NO_INSCRIPTO: 'N',
+        PrinterInterface.IVA_TYPE_EXENTO: 'E',
+        PrinterInterface.IVA_TYPE_NO_RESPONSABLE: 'N',
+        PrinterInterface.IVA_TYPE_CONSUMIDOR_FINAL: 'F',
+        PrinterInterface.IVA_TYPE_RESPONSABLE_NO_INSCRIPTO_BIENES_DE_USO: 'R',
+        PrinterInterface.IVA_TYPE_RESPONSABLE_MONOTRIBUTO: 'M',
+        PrinterInterface.IVA_TYPE_MONOTRIBUTISTA_SOCIAL: 'T',
+        PrinterInterface.IVA_TYPE_PEQUENIO_CONTRIBUYENTE_EVENTUAL: 'F',
+        PrinterInterface.IVA_TYPE_PEQUENIO_CONTRIBUYENTE_EVENTUAL_SOCIAL: 'F',
+        PrinterInterface.IVA_TYPE_NO_CATEGORIZADO: 'U',
+    }
+
     models = ["TM-T900FA"]
     
     # Compatibilidad hacia atrás: asociación de letra a tipo de documento:
@@ -574,6 +597,52 @@ class EpsonExtPrinter(EpsonPrinter):
         elif self._currentDocument == self.CURRENT_DOC_NON_FISCAL:
             return 3
         raise "Invalid currentDocument"
+
+    def openBillTicket(self, type, name, address, doc, docType, ivaType):
+        return self._openBillTicket(type, name, address, doc, docType, ivaType)
+
+    def openBillCreditTicket(self, type, name, address, doc, docType, ivaType, reference="NC"):
+        return self._openBillTicket(type, name, address, doc, docType, ivaType, isCreditNote=True, reference=reference)
+
+    def openDebitNoteTicket(self, type, name, address, doc, docType, ivaType):
+        return self._openBillTicket(type, name, address, doc, docType, ivaType, isCreditNote=True)
+
+    def _openBillTicket(self, type, name, address, doc, docType, ivaType,
+                        isCreditNote=False, isDebitNote=False,
+                        reference=""):
+        if not doc or filter(lambda x: x not in string.digits + "-.", doc or "") or not \
+                docType in self.docTypeMap:
+            doc, docType = "", ""
+        else:
+            doc = doc.replace("-", "").replace(".", "")
+        # la letra de la factura la determina la impresora, igual lo guardamos:
+        self._type = type
+        parameters = [
+            formatText(name[:40]), # Nombre
+            formatText(name[40:80]), # Segunda parte del nombre
+            formatText(address[:self.ADDRESS_SIZE] or "-"), # Domicilio
+            formatText(address[self.ADDRESS_SIZE:self.ADDRESS_SIZE * 2]), # Domicilio 2da linea
+            formatText(address[self.ADDRESS_SIZE * 2:self.ADDRESS_SIZE * 3]), # Domicilio 3ra linea
+            self.docTypeMap.get(docType, ""), doc,
+            self.ivaTypeMap.get(ivaType, ""),   # Iva Comprador
+            "", "", "", # Remito primer, segunda y tercera linea
+            reference
+            ]
+        assert len(parameters) == 12
+        # determinar comando según tipo de comprobante:
+        if isCreditNote:
+            self._currentDocument = self.CURRENT_DOC_CREDIT_TICKET
+            cmd_ext = '\0\0'
+        else:
+            self._currentDocument = self.CURRENT_DOC_BILL_TICKET
+            if isDebitNote:
+                cmd_ext = '\x20\x00'
+            else:
+                cmd_ext = '\0\0'
+        cmd = self.CMD_OPEN_FISCAL_RECEIPT[self._getCommandIndex()]
+        # guardo el tipo de FC (A/B/C)
+        self._currentDocumentType = type
+        return self._sendCommand(cmd, [cmd_ext] + parameters)
 
     def openTicket(self, defaultLetter=''):
         "Abrir un Tique a 'CONSUMIDOR FINAL' (genérico, sin letra)"

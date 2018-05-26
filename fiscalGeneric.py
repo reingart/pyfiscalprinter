@@ -48,6 +48,7 @@ class PrinterInterface:
 
 
     DOC_TYPE_CUIT = 'C'
+    DOC_TYPE_CUIL = 'L'
     DOC_TYPE_LIBRETA_ENROLAMIENTO = '0'
     DOC_TYPE_LIBRETA_CIVICA = '1'
     DOC_TYPE_DNI = '2'
@@ -57,6 +58,7 @@ class PrinterInterface:
 
     docTypeNames = {
         DOC_TYPE_CUIT: "CUIT",
+        DOC_TYPE_CUIL: "CUIL",
         DOC_TYPE_LIBRETA_ENROLAMIENTO: 'L.E.',
         DOC_TYPE_LIBRETA_CIVICA: 'L.C.',
         DOC_TYPE_DNI: 'DNI',

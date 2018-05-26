@@ -46,6 +46,25 @@ closeTicket = printer.closeTicket()
 print "closeTicket=", closeTicket
 raw_input()
 
+# factura -----------------------------
+openBillTicket = printer.openBillTicket('A', 'nombre cliente', 'direccion', 
+                                        '30-50001091-2', printer.DOC_TYPE_CUIT,
+                                        printer.IVA_TYPE_RESPONSABLE_INSCRIPTO)
+print "openBillTicket=", openTicket
+raw_input()
+
+addItem = printer.addItem('Nombre producto',1,100)
+print "addItem=", addItem
+raw_input()
+
+infoTicket = printer.infoTicket()
+print "infoTicket=", infoTicket
+raw_input()
+
+closeTicket = printer.closeTicket()
+print "closeTicket=", closeTicket
+raw_input()
+
 # no fiscal -----------------------------
 
 nofiscal = printer.openNonFiscalReceipt()
