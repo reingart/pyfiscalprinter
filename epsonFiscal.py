@@ -525,7 +525,7 @@ class EpsonExtPrinter(EpsonPrinter):
         if not model:
             self.model = "TM-T900FA"
         else:
-            self.model = model
+            self.model = model.upper()
         self._currentDocument = None
         self._currentDocumentType = None
 
@@ -684,8 +684,8 @@ class EpsonExtPrinter(EpsonPrinter):
         cmd = self.CMD_PRINT_LINE_ITEM[self._getCommandIndex()]
         options = '\0\0'
         iva = str(iva) # TODO: No se ingresa!!
-        quantityStr = str(quantity * 10000)
-        priceStr = str(price * 10000)
+        quantityStr = str(int(quantity * 10000))
+        priceStr = str(int(price * 10000))
         item = [options,'','','','',description, quantityStr, priceStr, iva]
         assert len(item) == 9
         return self._sendCommand(cmd, item) 
@@ -706,7 +706,7 @@ class EpsonExtPrinter(EpsonPrinter):
     def addPayment(self, description, payment, code=None, qty=1, detail=""):
         # determinar el código de la forma de pago:
         if not code:
-            code = self.paymentMap.get(description, None)
+            code = self.paymentMap.get(description.upper(), None)
             if code:
                 detail = ""
             else:
@@ -714,7 +714,7 @@ class EpsonExtPrinter(EpsonPrinter):
                 code = 99
             description = ""
         if not isinstance(payment, basestring):
-            payment = str(payment * 1000)
+            payment = str(int(payment * 1000))
         cmd = self.CMD_ADD_PAYMENT[self._getCommandIndex()]
         parameters = [formatText(description)[:20],
                       formatText(description)[20:], 
