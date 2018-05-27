@@ -62,7 +62,7 @@ from functools import wraps
 
 # Drivers:
 
-from epsonFiscal import EpsonPrinter
+from epsonFiscal import EpsonPrinter, EpsonExtPrinter
 from hasarPrinter import HasarPrinter
 
 
@@ -127,7 +127,11 @@ class PyFiscalPrinter(Object):
     def Conectar(self, marca="epson", modelo="320", puerto="COM1", equipo=None):
         "Iniciar la comunicación con la instancia del controlador fiscal"
         if marca == 'epson':
-            Printer = EpsonPrinter
+            if modelo.upper() in ("TM-T900FA", ):
+                # segunda generación (protocolo extendido):
+                Printer = EpsonExtPrinter
+            else:
+                Printer = EpsonPrinter
         elif marca == 'hasar':
             Printer = HasarPrinter
         dummy = puerto == "dummy"
@@ -203,8 +207,8 @@ class PyFiscalPrinter(Object):
         # cancelar y volver a un estado conocido
         printer.cancelAnyDocument()
         # enviar texto de cabecera y pie de pagina:
-        printer.setHeader(self.header)
-        printer.setTrailer(self.trailer)
+        ##printer.setHeader(self.header)
+        ##printer.setTrailer(self.trailer)
         # enviar los comandos de apertura de comprobante fiscal:
         if cbte_fiscal.startswith('T'):
             if letra_cbte:
