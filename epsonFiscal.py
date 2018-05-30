@@ -519,7 +519,7 @@ class EpsonExtPrinter(EpsonPrinter):
                 self.driver = epsonFiscalDriver.EpsonFiscalDriverProxy(host, port)
             else:
                 deviceFile = deviceFile or 0
-                self.driver = epsonFiscalDriver.EpsonChileFiscalDriver(deviceFile, speed)
+                self.driver = epsonFiscalDriver.EpsonExtFiscalDriver(deviceFile, speed)
         except Exception, e:
             raise FiscalPrinterError("Imposible establecer comunicación.", e)
         if not model:
