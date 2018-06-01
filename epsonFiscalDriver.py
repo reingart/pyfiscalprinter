@@ -251,9 +251,13 @@ class EpsonFiscalDriver:
     def _escape(self, field):
         "Escapar caracteres especiales (STX, ETX, ESC, FS)"
         ret = []
+        if not isinstance(field, basestring):
+            field = str(field)
         for char in field:
             if ord(char) in (0x02, 0x03, 0x1b, 0x1c, ):
                  ret.append(chr(0x1b))                    # agregar escape
+            if isinstance(char, unicode):
+                char = char.encode("latin1")
             ret.append(char)
         return "".join(ret)
 
@@ -484,7 +488,7 @@ class EpsonExtFiscalDriver(EpsonFiscalDriver):
     RES_SEQ = 0x80      # Paquete de Respuesta Intermedia (no responder con ACK)
     ACK = chr(0x06)
     NAK = chr(0x15)
-    REPLY_MAP = {"CommandNumber": 2, "StatPrinter": 0, "StatFiscal": 1, "Return": 3}
+    REPLY_MAP = {"StatPrinter": 0, "StatFiscal": 1, "Return": 3}
     STAT_FN = lambda self, x: struct.unpack(">H", x)[0] # convertir de unsigned short
     
     def _parseReply( self, reply, skipStatusErrors ):
@@ -499,14 +503,11 @@ class EpsonExtFiscalDriver(EpsonFiscalDriver):
             self._parseFiscalStatus( fiscalStatus )
         # Posición 'CommandNumber' retorna si el comando se ejecuto o no...
         # toma dos valores -> \x00\x01 = NO ejecutado | \x00\x00 = SI ejecutado
-        comandoEjecutado = fields[self.REPLY_MAP["CommandNumber"]] 
-        print 'comandoEjecutado=',comandoEjecutado
-        if comandoEjecutado=='\x00\x01':
-            returnErrorsIndex = self.STAT_FN( fields[self.REPLY_MAP["Return"]] )
-            print 'returnErrorsIndex=',returnErrorsIndex
-            if returnErrorsIndex not in self.returnErrors.keys(): 
-                self.returnErrors[returnErrorsIndex] = 'Error desconocido...'
-            raise ReturnError, self.returnErrors[returnErrorsIndex]
+        returnErrorsIndex = self.STAT_FN( fields[self.REPLY_MAP["Return"]] )
+        print 'returnErrorsIndex=',returnErrorsIndex
+        if returnErrorsIndex not in self.returnErrors.keys(): 
+            self.returnErrors[returnErrorsIndex] = 'Error desconocido...'
+        raise ReturnError, self.returnErrors[returnErrorsIndex]
         # elimino el numero de comando (por compatibilidad con Epson Arg.)
         if "CommandNumber" in self.REPLY_MAP:
             fields.pop(self.REPLY_MAP["CommandNumber"])
