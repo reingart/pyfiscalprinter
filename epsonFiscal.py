@@ -696,7 +696,7 @@ class EpsonExtPrinter(EpsonPrinter):
         assert len(item) == 9
         return self._sendCommand(cmd, item) 
 
-    def closeTicket(self):
+    def closeDocument(self):
         cmd = self.CMD_CLOSE_FISCAL_RECEIPT[self._getCommandIndex()]
         # 0x0001 Corta papel
         # 0x0002 Devuelve respuesta electronica.
