@@ -560,6 +560,12 @@ class EpsonExtPrinter(EpsonPrinter):
     
         return ret
 
+    def dailyClose(self, type):
+        if type.upper() == "X":
+            return self.dailyCloseX()
+        elif type.upper() == "Z":
+            return self.dailyCloseZ()
+
     def getLastNumber(self, letter):
         tipo_cbte = str(self.LETTER_TICKET_MAP[letter])
         reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0', tipo_cbte])
