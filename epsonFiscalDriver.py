@@ -73,6 +73,7 @@ class EpsonFiscalDriver:
     ACK = None #chr(0x06)
     NAK = chr(0x15)
     REPLY_MAP = {"CommandNumber": 0, "StatPrinter": 1, "StatFiscal": 2}
+    ESCAPE_CHARS = (0x02, 0x03, 0x1b, 0x1c, )
 
     fiscalStatusErrors = [#(1<<0 + 1<<7, "Memoria Fiscal llena"),
                           (1<<0, "Error en memoria fiscal"),
@@ -254,7 +255,7 @@ class EpsonFiscalDriver:
         if not isinstance(field, basestring):
             field = str(field)
         for char in field:
-            if ord(char) in (0x02, 0x03, 0x1b, 0x1c, ):
+            if ord(char) in self.ESCAPE_CHARS:
                  ret.append(chr(0x1b))                    # agregar escape
             if isinstance(char, unicode):
                 char = char.encode("latin1")
@@ -490,6 +491,7 @@ class EpsonExtFiscalDriver(EpsonFiscalDriver):
     NAK = chr(0x15)
     REPLY_MAP = {"StatPrinter": 0, "StatFiscal": 1, "Return": 3}
     STAT_FN = lambda self, x: struct.unpack(">H", x)[0] # convertir de unsigned short
+    ESCAPE_CHARS = (0x02, 0x03, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f)
     
     def _parseReply( self, reply, skipStatusErrors ):
         r = reply[2:-1] # Saco STX <Nro Seq> ... ETX
