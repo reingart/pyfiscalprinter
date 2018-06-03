@@ -434,6 +434,7 @@ class EpsonExtPrinter(EpsonPrinter):
     CMD_ADD_PAYMENT = (0x0a05, 0x0b05, 0x0d05)
     CMD_INFO_TICKET = (0X0a0a, 0x0b0a, 0x0d0a)
     CMD_CLOSE_FISCAL_RECEIPT = (0x0a06, 0x0b06, 0x0d06)
+    CMD_CANCEL_FISCAL_RECEIPT = (0x0a07, 0x0b07, 0x0d07)
     CMD_DAILY_CLOSE_Z = 0x0801
     CMD_DAILY_CLOSE_X = 0x0802
     CMD_PRINT_REPORT_X = 0x0805
@@ -585,20 +586,26 @@ class EpsonExtPrinter(EpsonPrinter):
         reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0', tipo_cbte])
         return int(reply[5 + 3])
 
-    def closelAnyDocument(self):
+    def cancelAnyDocument(self):
         try:
-            reply = self._sendCommand(self.CMD_CLOSE_FISCAL_RECEIPT[self._getCommandIndex()], ['\0\1','','','','','','']) #['\0\1'] > Corta papel | ['\0\0'] > No corta
-            print 'reply=',reply
+            for i in range(3):
+                self._sendCommand(self.CMD_CANCEL_FISCAL_RECEIPT[i], ["\0\0", ])
             return True
         except:
             pass
         try:
             reply = self._sendCommand(self.CMD_CLOSE_NON_FISCAL_RECEIPT, ['\0\1','','','','','','']) #['\0\1'] > Corta papel | ['\0\0'] > No corta
-            print 'reply=',reply
             return True
         except:
             pass
         return False
+
+    def cancelDocument(self):
+        if self._currentDocument in (self.CURRENT_DOC_TICKET, self.CURRENT_DOC_BILL_TICKET,
+                self.CURRENT_DOC_CREDIT_TICKET):
+            status = self._sendCommand(self.CMD_CANCEL_FISCAL_RECEIPT[self._getCommandIndex()], ["\0\0", ])
+            return status
+        raise NotImplementedError
 
     ###### Jornada fiscal ----------------------------------------------
 
