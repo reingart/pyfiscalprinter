@@ -235,8 +235,16 @@ class PyFiscalPrinter(Object):
         ##ds = unicode(ds, "latin1") # convierto a latin1
         # Nota: no se calcula neto, iva, etc (deben venir calculados!)
         discount = discountDescription =  None
-        self.printer.addItem(ds, float(qty), float(importe), float(alic_iva), 
-                                    discount, discountDescription)
+        qty = float(qty)
+        importe = float(importe)
+        alic_iva = float(alic_iva)
+        negative = importe < 0
+        # si tiene cantidad es articulo normal, sino un descuento/recargo gral:
+        if qty:
+            self.printer.addItem(ds, qty, importe, alic_iva,
+                                 discount, discountDescription, negative)
+        else:
+            self.printer.addAdditional(ds, importe, alic_iva, negative)
         return True
 
     @inicializar_y_capturar_excepciones
