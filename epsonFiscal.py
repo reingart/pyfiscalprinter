@@ -689,7 +689,7 @@ class EpsonExtPrinter(EpsonPrinter):
     def addItem(self, description, quantity, price, iva=21, discount='', discountDescription='', negative=False):
         cmd = self.CMD_PRINT_LINE_ITEM[self._getCommandIndex()]
         options = '\0\0'
-        iva = str(iva) # TODO: No se ingresa!!
+        iva = str(int(iva * 100)) # TODO: debe ser sero si el emisor no es R.I.
         quantityStr = str(int(quantity * 10000))
         priceStr = str(int(price * 10000))
         item = [options,'','','','',description, quantityStr, priceStr, iva]
