@@ -15,7 +15,7 @@
 __author__ = "Mariano Reingart <reingart@gmail.com>"
 __copyright__ = "Copyright (C) 2014 Mariano Reingart"
 __license__ = "GPL 3.0"
-__version__ = "1.06c"
+__version__ = "1.06d"
 
 CONFIG_FILE = "fiscal.ini"
 DEBUG = True
