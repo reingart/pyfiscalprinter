@@ -667,7 +667,7 @@ class EpsonExtPrinter(EpsonPrinter):
             formatText(address[self.ADDRESS_SIZE * 2:self.ADDRESS_SIZE * 3]), # Domicilio 3ra linea
             self.docTypeMap.get(docType, ""), doc,
             self.ivaTypeMap.get(ivaType, ""),   # Iva Comprador
-            "", "", "", # Remito primer, segunda y tercera linea
+            "000-00000-00000000", "000-00000-00000000", "000-00000-00000000", # Remito primer, segunda y tercera linea
             reference
             ]
         assert len(parameters) == 12
