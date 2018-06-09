@@ -699,8 +699,13 @@ class EpsonExtPrinter(EpsonPrinter):
         iva = str(int(iva * 100)) # TODO: debe ser sero si el emisor no es R.I.
         quantityStr = str(int(quantity * 10000))
         priceStr = str(int(price * 10000))
-        item = [options,'','','','',description, quantityStr, priceStr, iva]
-        assert len(item) == 9
+        item = [options, '','','','',description, quantityStr, priceStr, iva]
+        # capmos opcionales:
+        item += [""] * 7
+        # campos obligatorios:
+        item[13] = "X"      # codigo interno
+        item[14] = "0"      # codigo de unidad de medida (0: sin descripción)
+        assert len(item) == 16
         return self._sendCommand(cmd, item) 
 
     def closeDocument(self):
@@ -713,7 +718,11 @@ class EpsonExtPrinter(EpsonPrinter):
             cmd_ext = '\x00\x17'
         else:
             cmd_ext = '\x00\x03'
-        reply = self._sendCommand(cmd, [cmd_ext,'','','','','',''])
+        # campos opcionales:
+        fields = ['','','','','','']
+        if cmd != 0x0b06:
+            fields += ['']
+        reply = self._sendCommand(cmd, [cmd_ext] + fields)
         return reply
 
     def addPayment(self, description, payment, code=None, qty=1, detail=""):
