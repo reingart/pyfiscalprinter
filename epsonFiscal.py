@@ -640,14 +640,14 @@ class EpsonExtPrinter(EpsonPrinter):
             return 3
         raise "Invalid currentDocument"
 
-    def openBillTicket(self, type, name, address, doc, docType, ivaType):
-        return self._openBillTicket(type, name, address, doc, docType, ivaType)
+    def openBillTicket(self, type, name, address, doc, docType, ivaType, reference="000-00000-00000000"):
+        return self._openBillTicket(type, name, address, doc, docType, ivaType, reference=reference)
 
-    def openBillCreditTicket(self, type, name, address, doc, docType, ivaType, reference="NC"):
+    def openBillCreditTicket(self, type, name, address, doc, docType, ivaType, reference="000-00000-00000000"):
         return self._openBillTicket(type, name, address, doc, docType, ivaType, isCreditNote=True, reference=reference)
 
-    def openDebitNoteTicket(self, type, name, address, doc, docType, ivaType):
-        return self._openBillTicket(type, name, address, doc, docType, ivaType, isCreditNote=True)
+    def openDebitNoteTicket(self, type, name, address, doc, docType, ivaType, reference="000-00000-00000000"):
+        return self._openBillTicket(type, name, address, doc, docType, ivaType, isDebitNote=True, reference=reference)
 
     def _openBillTicket(self, type, name, address, doc, docType, ivaType,
                         isCreditNote=False, isDebitNote=False,
