@@ -515,9 +515,11 @@ class EpsonExtFiscalDriver(EpsonFiscalDriver):
         # toma dos valores -> \x00\x01 = NO ejecutado | \x00\x00 = SI ejecutado
         returnErrorsIndex = self.STAT_FN( fields[self.REPLY_MAP["Return"]] )
         print 'returnErrorsIndex=',returnErrorsIndex
-        if returnErrorsIndex not in self.returnErrors.keys(): 
-            self.returnErrors[returnErrorsIndex] = 'Error desconocido...'
-        raise ReturnError, self.returnErrors[returnErrorsIndex]
+        # si no hubo error (0x0000), no lanzar excepción:
+        if returnErrorsIndex:
+            if returnErrorsIndex not in self.returnErrors.keys(): 
+                self.returnErrors[returnErrorsIndex] = 'Error desconocido...'
+            raise ReturnError, self.returnErrors[returnErrorsIndex]
         # elimino el numero de comando (por compatibilidad con Epson Arg.)
         if "CommandNumber" in self.REPLY_MAP:
             fields.pop(self.REPLY_MAP["CommandNumber"])
