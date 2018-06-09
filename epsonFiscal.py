@@ -723,7 +723,12 @@ class EpsonExtPrinter(EpsonPrinter):
         if cmd != 0x0b06:
             fields += ['']
         reply = self._sendCommand(cmd, [cmd_ext] + fields)
-        return reply
+        # devolver letra y número de comprobante creado:
+        if self._getCommandIndex() == 0:
+            ret = reply[5]
+        else:
+            ret = reply[6] + reply[5]
+        return ret
 
     def addPayment(self, description, payment, code=None, qty=1, detail=""):
         # determinar el código de la forma de pago:
