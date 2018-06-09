@@ -225,6 +225,11 @@ class EpsonFiscalDriver:
                     if retries > self.RETRIES:
                         raise ComunicationError, "Fallo de comunicación, demasiados paquetes inválidos (bad bcc)."
                     continue
+                elif self._checkReplyInter( reply ):
+                    # respuesta intermedia transcurridos 500ms
+                    # no es necesario enviar una confirmación (ACK/NACK)
+                    timeout += self.WAIT_CHAR_TIME * 5
+                    continue
                 elif reply[1] != chr( self._sequenceNumber ): # Los número de seq no coinciden
                     # Reenvío el mensaje
                     self._write( message )
@@ -248,6 +253,9 @@ class EpsonFiscalDriver:
         debug( "checkSumHexa", checkSumHexa )
         debug( "bcc", bcc )
         return checkSumHexa == bcc.upper()
+
+    def _checkReplyInter( self, reply ):
+        return False
 
     def _escape(self, field):
         "Escapar caracteres especiales (STX, ETX, ESC, FS)"
@@ -514,6 +522,10 @@ class EpsonExtFiscalDriver(EpsonFiscalDriver):
         if "CommandNumber" in self.REPLY_MAP:
             fields.pop(self.REPLY_MAP["CommandNumber"])
         return fields
+
+    def _checkReplyInter( self, reply ):
+        # verificar si es una respuesta intermedia (sin campos, seq especial)
+        return reply[1] == chr( self.RES_SEQ )
 
     def _parseFiscalStatus( self, fiscalStatus ):
         # TODO: 
