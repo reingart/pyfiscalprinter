@@ -570,8 +570,7 @@ class EpsonExtPrinter(EpsonPrinter):
     def getLastNumber(self, letter):
         tipo_cbte = str(self.LETTER_TICKET_MAP[letter])
         reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0', tipo_cbte])
-        #codigo manual + 3
-        return int(reply[5 + 3])
+        return int(reply[10])
 
     def openDrawer(self):
         reply = self._sendCommand(self.CMD_OPEN_DRAWER, ['\0\0'])
@@ -584,7 +583,7 @@ class EpsonExtPrinter(EpsonPrinter):
     def getLastCreditNoteNumber(self, letter):
         tipo_cbte = str(self.LETTER_CREDIT_MAP[letter])
         reply = self._sendCommand(self.CMD_STATUS_REQUEST, ['\0\0', tipo_cbte])
-        return int(reply[5 + 3])
+        return int(reply[10])
 
     def cancelAnyDocument(self):
         try:
