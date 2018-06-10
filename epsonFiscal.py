@@ -640,8 +640,8 @@ class EpsonExtPrinter(EpsonPrinter):
             return 3
         raise "Invalid currentDocument"
 
-    def openBillTicket(self, type, name, address, doc, docType, ivaType, reference="000-00000-00000000"):
-        return self._openBillTicket(type, name, address, doc, docType, ivaType, reference=reference)
+    def openBillTicket(self, type, name, address, doc, docType, ivaType, reference="000-00000-00000000", remits=None):
+        return self._openBillTicket(type, name, address, doc, docType, ivaType, reference=reference, remits=remits)
 
     def openBillCreditTicket(self, type, name, address, doc, docType, ivaType, reference="000-00000-00000000"):
         return self._openBillTicket(type, name, address, doc, docType, ivaType, isCreditNote=True, reference=reference)
@@ -651,7 +651,9 @@ class EpsonExtPrinter(EpsonPrinter):
 
     def _openBillTicket(self, type, name, address, doc, docType, ivaType,
                         isCreditNote=False, isDebitNote=False,
-                        reference=""):
+                        reference="", remits=None):
+        if not remits:
+            remits = [""] * 3
         if not doc or filter(lambda x: x not in string.digits + "-.", doc or "") or not \
                 docType in self.docTypeMap:
             doc, docType = "", ""
@@ -667,7 +669,7 @@ class EpsonExtPrinter(EpsonPrinter):
             formatText(address[self.ADDRESS_SIZE * 2:self.ADDRESS_SIZE * 3]), # Domicilio 3ra linea
             self.docTypeMap.get(docType, ""), doc,
             self.ivaTypeMap.get(ivaType, ""),   # Iva Comprador
-            "000-00000-00000000", "000-00000-00000000", "000-00000-00000000", # Remito primer, segunda y tercera linea
+            remits[0], remits[1], remits[2], # Remito primer, segunda y tercera linea
             reference
             ]
         assert len(parameters) == 12

@@ -216,8 +216,11 @@ class PyFiscalPrinter(Object):
             else:
                 ret = printer.openTicket()
         elif cbte_fiscal.startswith("F"):
+            params = {}
+            if "remitos" in kwargs:
+                params["remits"] = kwargs["remitos"]
             ret = printer.openBillTicket(letra_cbte, nombre_cliente, domicilio_cliente, 
-                                         nro_doc, doc_fiscal, pos_fiscal)
+                                         nro_doc, doc_fiscal, pos_fiscal, **params)
         elif cbte_fiscal.startswith("ND"):
             ret = printer.openDebitNoteTicket(letra_cbte, nombre_cliente, 
                                               domicilio_cliente, nro_doc, doc_fiscal, 
