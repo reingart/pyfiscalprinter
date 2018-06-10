@@ -287,7 +287,7 @@ class PyFiscalPrinter(Object):
         "Devuelve el último número de comprobante"
         # mapear el numero de documento según RG1361
         cbte_fiscal = self.cbte_fiscal_map[int(tipo_cbte)]
-        letra_cbte = cbte_fiscal[-1] if len(cbte_fiscal) > 1 else None
+        letra_cbte = cbte_fiscal[-1] if len(cbte_fiscal) > 1 else ''
         if cbte_fiscal.startswith("NC"):
             return self.printer.getLastCreditNoteNumber(letra_cbte)
         else:
