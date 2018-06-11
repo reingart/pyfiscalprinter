@@ -178,13 +178,14 @@ class PyFiscalPrinter(Object):
         return msg    
 
     @inicializar_y_capturar_excepciones
-    @method(DBUS_IFACE, in_signature='iiissss', out_signature='b')
+    @method(DBUS_IFACE, in_signature='iiisssss', out_signature='b')
     def AbrirComprobante(self, 
                          tipo_cbte=83,                              # tique
                          tipo_responsable=5,                        # consumidor final
                          tipo_doc=99, nro_doc=0,                    # sin especificar
                          nombre_cliente="", domicilio_cliente="",
                          referencia=None,                           # comprobante original (ND/NC)
+                         cbtes_asoc=None,                           # documentos asociados (remitos)
                          **kwargs
                          ):
         "Creo un objeto factura (internamente) e imprime el encabezado"
@@ -194,7 +195,9 @@ class PyFiscalPrinter(Object):
                                            tipo_doc=tipo_doc, nro_doc=nro_doc,
                                            nombre_cliente=nombre_cliente, 
                                            domicilio_cliente=domicilio_cliente,
-                                           referencia=referencia),
+                                           referencia=referencia,
+                                           cbtes_asoc=cbtes_asoc,
+                                          ),
                         "items": [], "pagos": []}
         printer = self.printer
         # mapear el tipo de comprobante según RG1785/04:
@@ -209,6 +212,14 @@ class PyFiscalPrinter(Object):
         # enviar texto de cabecera y pie de pagina:
         ##printer.setHeader(self.header)
         ##printer.setTrailer(self.trailer)
+        # revisar parametros adicionales, i.e. documentos asociados:
+        params = {}
+        if cbtes_asoc:
+            if isinstance(cbtes_asoc, basestring):
+                cbtes_asoc = cbtes_asoc.split(",")
+            params["cbtes_asoc"] = cbtes_asoc
+        if isinstance(referencia, unicode):
+            referencia = referencia.encode("latin1", "ignore")
         # enviar los comandos de apertura de comprobante fiscal:
         if cbte_fiscal.startswith('T'):
             if letra_cbte:
@@ -216,21 +227,16 @@ class PyFiscalPrinter(Object):
             else:
                 ret = printer.openTicket()
         elif cbte_fiscal.startswith("F"):
-            params = {}
-            if "remitos" in kwargs:
-                params["remits"] = kwargs["remitos"]
             ret = printer.openBillTicket(letra_cbte, nombre_cliente, domicilio_cliente, 
                                          nro_doc, doc_fiscal, pos_fiscal, **params)
         elif cbte_fiscal.startswith("ND"):
             ret = printer.openDebitNoteTicket(letra_cbte, nombre_cliente, 
                                               domicilio_cliente, nro_doc, doc_fiscal, 
-                                              pos_fiscal)
+                                              pos_fiscal, **params)
         elif cbte_fiscal.startswith("NC"):
-            if isinstance(referencia, unicode):
-                referencia = referencia.encode("latin1", "ignore")
             ret = printer.openBillCreditTicket(letra_cbte, nombre_cliente, 
                                                domicilio_cliente, nro_doc, doc_fiscal, 
-                                               pos_fiscal, referencia)
+                                               pos_fiscal, referencia, **params)
         return True
 
     @inicializar_y_capturar_excepciones

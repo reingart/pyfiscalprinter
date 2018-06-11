@@ -639,20 +639,23 @@ class EpsonExtPrinter(EpsonPrinter):
             return 3
         raise "Invalid currentDocument"
 
-    def openBillTicket(self, type, name, address, doc, docType, ivaType, reference="000-00000-00000000", remits=None):
-        return self._openBillTicket(type, name, address, doc, docType, ivaType, reference=reference, remits=remits)
+    def openBillTicket(self, type, name, address, doc, docType, ivaType, reference="", cbtes_asoc=None):
+        return self._openBillTicket(type, name, address, doc, docType, ivaType, reference=reference, cbtes_asoc=cbtes_asoc)
 
-    def openBillCreditTicket(self, type, name, address, doc, docType, ivaType, reference="000-00000-00000000"):
-        return self._openBillTicket(type, name, address, doc, docType, ivaType, isCreditNote=True, reference=reference)
+    def openBillCreditTicket(self, type, name, address, doc, docType, ivaType, reference=None, cbtes_asoc=None):
+        return self._openBillTicket(type, name, address, doc, docType, ivaType, isCreditNote=True, reference=reference, cbtes_asoc=cbtes_asoc)
 
-    def openDebitNoteTicket(self, type, name, address, doc, docType, ivaType, reference="000-00000-00000000"):
-        return self._openBillTicket(type, name, address, doc, docType, ivaType, isDebitNote=True, reference=reference)
+    def openDebitNoteTicket(self, type, name, address, doc, docType, ivaType, reference=None, cbtes_asoc=None):
+        return self._openBillTicket(type, name, address, doc, docType, ivaType, isDebitNote=True, reference=reference, cbtes_asoc=cbtes_asoc)
 
     def _openBillTicket(self, type, name, address, doc, docType, ivaType,
                         isCreditNote=False, isDebitNote=False,
-                        reference="", remits=None):
-        if not remits:
-            remits = [""] * 3
+                        reference="", cbtes_asoc=None):
+        # valores por defecto
+        if not cbtes_asoc:
+            cbtes_asoc = ["903-00001-00000001"] + [""] * 2
+        if not reference:
+            reference = "000-00000-00000000"
         if not doc or filter(lambda x: x not in string.digits + "-.", doc or "") or not \
                 docType in self.docTypeMap:
             doc, docType = "", ""
@@ -668,7 +671,7 @@ class EpsonExtPrinter(EpsonPrinter):
             formatText(address[self.ADDRESS_SIZE * 2:self.ADDRESS_SIZE * 3]), # Domicilio 3ra linea
             self.docTypeMap.get(docType, ""), doc,
             self.ivaTypeMap.get(ivaType, ""),   # Iva Comprador
-            remits[0], remits[1], remits[2], # Remito primer, segunda y tercera linea
+            cbtes_asoc[0], cbtes_asoc[1], cbtes_asoc[2], # Remito primer, segunda y tercera linea
             reference
             ]
         assert len(parameters) == 12
