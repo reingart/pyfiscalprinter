@@ -14,7 +14,7 @@ def debugEnabled( *args ):
 def debugDisabled( *args ):
     pass
 
-debug = debugEnabled
+debug = "--debug" in sys.argv
 
 class PrinterException(Exception):
     pass
