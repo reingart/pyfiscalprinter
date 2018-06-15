@@ -541,9 +541,12 @@ class EpsonExtFiscalDriver(EpsonFiscalDriver):
 
     def _unescape(self, field): 
         ret = []
+        prev = 0x00
         for char in field:
-            if ord(char) != 0x1b:
+            # salterar caracter de escape (si no está escapado previamente)
+            if ord(char) != 0x1b or prev == 0x1b:
                  ret.append(char)
+            prev = ord(char)
         return "".join(ret)
 
 
