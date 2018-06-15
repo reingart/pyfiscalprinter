@@ -8,12 +8,14 @@
 
 Set fiscal = Wscript.CreateObject("PyFiscalPrinter")
 
+''MsgBox "Ver:" & fiscal.Version, "PyFiscalPrinter"
+
 ' En VB 5/6 clasico usar: Set fiscal = CreateObject("PyFiscalPrinter")
 
-marca = "epson"            ' configurar "hasar" o "epson"
-modelo = "epsonlx300+"     ' "tickeadoras", "epsonlx300+", "tm-220-af"
+marca = "hasar"            ' configurar "hasar" o "epson"
+modelo = "320"     ' "tickeadoras", "epsonlx300+", "tm-220-af"
                            ' "615", "715v1", "715v2", "320"
-puerto = "dummy"           ' "COM1", "COM2", etc. o "/dev/ttyS0" en linux
+puerto = "COM2"           ' "COM1", "COM2", etc.
 equipo = ""                ' IP si no esta conectada a esta máquina
 
 ok = fiscal.Conectar(marca, modelo, puerto, equipo)
@@ -25,18 +27,18 @@ End If
 
 ' Consultar el último número de comprobante impreso por el controlador:
 ' IMPORTANTE: en modo dummy solicita el número de comprobante por consola
-tipo_cbte = 83
+tipo_cbte = 8
 ult = fiscal.ConsultarUltNro(tipo_cbte)
 MsgBox "Ultimo Nro de Cbte = " & ult
 
 ' Creo una factura de ejemplo:
-tipo_cbte = 6                          ' factura B
-tipo_doc = 80                          ' CUIT
-nro_doc = "20267565393"
-nombre_cliente = "Mariano Reingart"
-domicilio_cliente = "Balcarce 50"
+tipo_cbte = 8                          ' factura B
+tipo_doc = 96                          ' CUIT
+nro_doc = "28136325"
+nombre_cliente = "Federico Finki"
+domicilio_cliente = "Lima"
 tipo_responsable = 5                  ' consumidor final
-referencia = ""                       ' solo para NC / ND
+referencia = "00000189"                       ' solo para NC / ND
     
 ok = fiscal.AbrirComprobante(tipo_cbte, tipo_responsable, _
                              tipo_doc, nro_doc, _
@@ -47,12 +49,12 @@ Wscript.Echo "Abrir Comprobante = ", ok
     
 ' Imprimo un artículo:
 codigo = "P0001"
-ds = "Descripcion del producto P0001"
+ds = "nota de credito F B 00000189 prueba"
 qty = 1.00
-precio = 100.00
+precio = 1.00
 bonif = 0.00
 alic_iva = 21.00
-importe = 121.00
+importe = 1.21
 ok = fiscal.ImprimirItem(ds, qty, importe, alic_iva)
 Wscript.Echo "ImprimirItem = ", ok
 
