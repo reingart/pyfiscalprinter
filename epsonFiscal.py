@@ -745,7 +745,7 @@ class EpsonExtPrinter(EpsonPrinter):
                 code = 99
             description = ""
         if not isinstance(payment, basestring):
-            payment = str(int(payment * 1000))
+            payment = str(int(payment * 100))
         cmd = self.CMD_ADD_PAYMENT[self._getCommandIndex()]
         parameters = [formatText(description)[:20],
                       formatText(description)[20:], 
