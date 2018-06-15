@@ -15,7 +15,8 @@
 __author__ = "Mariano Reingart <reingart@gmail.com>"
 __copyright__ = "Copyright (C) 2014 Mariano Reingart"
 __license__ = "GPL 3.0"
-__version__ = "1.06c"
+
+from __init__ import __version__
 
 CONFIG_FILE = "fiscal.ini"
 DEBUG = True
@@ -345,7 +346,7 @@ if __name__ == '__main__':
         # leeo configuración (primer argumento o rece.ini por defecto)
         if len(sys.argv)>1 and not sys.argv[1].startswith("--"):
             CONFIG_FILE = sys.argv.pop(1)
-        if DEBUG: print "CONFIG_FILE:", CONFIG_FILE
+        if DEBUG: print "CONFIG_FILE:", CONFIG_FILE, "VERSION:", __version__
         
         config = SafeConfigParser()
         config.read(CONFIG_FILE)
