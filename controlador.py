@@ -15,7 +15,7 @@
 __author__ = "Mariano Reingart <reingart@gmail.com>"
 __copyright__ = "Copyright (C) 2014 Mariano Reingart"
 __license__ = "GPL 3.0"
-__version__ = "1.06d"
+from __init__ import __version__
 
 CONFIG_FILE = "fiscal.ini"
 DEBUG = True
@@ -144,6 +144,8 @@ class PyFiscalPrinter(Object):
                                 6: 'FB', 7: 'NDB', 8: 'NCB', 
                                 11: 'FC', 12: 'NDC', 13: 'NDC',
                                 81:	'FA', 82: 'FB', 83: 'T',      # tiques
+                                91: 'Remito R', 901: "Remito X",
+                                902: 'Recibo X', 903: 'Presupuesto X',
                                 }
         self.pos_fiscal_map = {
                                 1:  printer.IVA_TYPE_RESPONSABLE_INSCRIPTO,
@@ -224,6 +226,13 @@ class PyFiscalPrinter(Object):
             ret = printer.openBillCreditTicket(letra_cbte, nombre_cliente, 
                                                domicilio_cliente, nro_doc, doc_fiscal, 
                                                pos_fiscal, referencia)
+        elif tipo_cbte in (91, 901):
+            ret = printer.openRemit(nombre_cliente, domicilio_cliente,
+                                    nro_doc, doc_fiscal, pos_fiscal)
+        elif tipo_cbte in (902, ):
+            ret = printer.openReceipt(nombre_cliente, domicilio_cliente,
+                                    nro_doc, doc_fiscal, pos_fiscal,
+                                    referencia)
         return True
 
     @inicializar_y_capturar_excepciones
@@ -241,8 +250,13 @@ class PyFiscalPrinter(Object):
         negative = importe < 0
         # si tiene cantidad es articulo normal, sino un descuento/recargo gral:
         if qty:
-            self.printer.addItem(ds, qty, importe, alic_iva,
-                                 discount, discountDescription, negative)
+            if factura['encabezado']['tipo_cbte'] in (91, 901):
+                self.printer.addRemitItem(ds, qty)
+            elif factura['encabezado']['tipo_cbte'] in (902, ):
+                self.printer.addReceiptDetail(ds, importe)
+            else:
+                self.printer.addItem(ds, qty, importe, alic_iva,
+                                     discount, discountDescription, negative)
         else:
             self.printer.addAdditional(ds, importe, alic_iva, negative)
         return True
