@@ -248,6 +248,8 @@ class PyFiscalPrinter(Object):
         importe = float(importe)
         alic_iva = float(alic_iva)
         negative = importe < 0
+        if negative:
+            importe = abs(importe)
         # si tiene cantidad es articulo normal, sino un descuento/recargo gral:
         if qty:
             if factura['encabezado']['tipo_cbte'] in (91, 901):
