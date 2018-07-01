@@ -134,6 +134,7 @@ class EpsonPrinter(PrinterInterface):
     }
 
     ADDRESS_SIZE = 30
+    USAR_IMPUESTOS_INTERNOS = False
 
     def _setHeaderTrailer(self, line, text):
         self._sendCommand(self.CMD_SET_HEADER_TRAILER, (str(line), text))
@@ -285,7 +286,7 @@ class EpsonPrinter(PrinterInterface):
         if self.model == "epsonlx300+":
             bultosStr = str(int(quantity))
         else:
-            bultosStr = "0" * 5  # No se usa en TM220AF ni TM300AF ni TMU220AF
+            bultosStr = "00001" # No se usa en TM220AF ni TM300AF ni TMU220AF
         if self._currentDocumentType != 'A':
             # enviar con el iva incluido
             priceUnitStr = str(int(round(price * 100, 0)))
@@ -303,6 +304,9 @@ class EpsonPrinter(PrinterInterface):
             for d in description[:-1]:
                 self._sendCommand(self.CMD_PRINT_TEXT_IN_FISCAL,
                                    [formatText(d)[:20]])
+        if self.USAR_IMPUESTOS_INTERNOS:
+            # agregar campos de acrecentamiento RNI e impuestos internos N(9.8)
+            extraparams += ["0000", "0" * 17]
         reply = self._sendCommand(self.CMD_PRINT_LINE_ITEM[self._getCommandIndex()],
                           [formatText(description[-1][:20]),
                             quantityStr, priceUnitStr, ivaStr, sign, bultosStr, "0" * 8] + extraparams)
@@ -341,9 +345,12 @@ class EpsonPrinter(PrinterInterface):
         ivaStr = str(int(iva * 100))
         extraparams = self._currentDocument in (self.CURRENT_DOC_BILL_TICKET,
             self.CURRENT_DOC_CREDIT_TICKET) and ["", "", ""] or []
+        if self.USAR_IMPUESTOS_INTERNOS:
+            # agregar campos de acrecentamiento RNI e impuestos internos N(9.8)
+            extraparams += ["0000", "0" * 17]
         reply = self._sendCommand(self.CMD_PRINT_LINE_ITEM[self._getCommandIndex()],
                           [formatText(description[:20]),
-                            quantityStr, priceUnitStr, ivaStr, sign, bultosStr, "0"] + extraparams)
+                            quantityStr, priceUnitStr, ivaStr, sign, bultosStr, "0" * 8] + extraparams)
         return reply
 
     def subtotal(self, print_text=True, display=False, text="Subtotal"):
