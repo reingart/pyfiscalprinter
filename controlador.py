@@ -100,6 +100,7 @@ class PyFiscalPrinter(Object):
     _public_methods_ = ['Conectar',
                         'AbrirComprobante', 'CerrarComprobante',
                         'ImprimirItem', 'ImprimirPago', 'Subtotal',
+                        'AgregarTributo',
                         'ConsultarUltNro', 'CierreDiario',
                         'FijarTextoCabecera', 'FijarTextoPie',
                         ]
@@ -193,7 +194,7 @@ class PyFiscalPrinter(Object):
                                            nombre_cliente=nombre_cliente, 
                                            domicilio_cliente=domicilio_cliente,
                                            referencia=referencia),
-                        "items": [], "pagos": []}
+                        "items": [], "tributos": [], "pagos": []}
         printer = self.printer
         # mapear el tipo de comprobante según RG1785/04:
         cbte_fiscal = self.cbte_fiscal_map[int(tipo_cbte)]
@@ -269,6 +270,21 @@ class PyFiscalPrinter(Object):
         "Imprime una linea con la forma de pago y monto"
         self.factura["pagos"].append(dict(ds=ds, importe=importe))
         self.printer.addPayment(ds, float(importe))
+        return True
+
+    @inicializar_y_capturar_excepciones
+    @method(DBUS_IFACE, in_signature='vvvv', out_signature='b')
+    def AgregarTributo(self, tributo_id, ds, importe, alic=21.):
+        "Envia otros impuestos (i.e. percepciones) a una factura"
+        self.factura["tributos"].append(dict(ds=ds, importe=importe,
+                                             alic=alic,
+                                             tributo_id=tributo_id))
+        ##ds = unicode(ds, "latin1") # convierto a latin1
+        # Nota: no se calcula neto, iva, etc (deben venir calculados!)
+        importe = float(importe)
+        alic = float(alic) if alic else alic
+        # si tiene cantidad es articulo normal, sino un descuento/recargo gral:
+        self.printer.addTax(tributo_id, ds, importe, alic)
         return True
 
     @inicializar_y_capturar_excepciones
@@ -447,6 +463,8 @@ if __name__ == '__main__':
             ok = controlador.AbrirComprobante(**factura["encabezado"])
             for item in factura["items"]:
                 ok = controlador.ImprimirItem(**item)
+            for tributo in factura.get("tributos", []):
+                ok = controlador.AgregarTributo(**tributo)
             if "subtotal" in factura:
                 ok = controlador.Subtotal(imprimir=factura["subtotal"]) 
             for pago in factura["pagos"]:
