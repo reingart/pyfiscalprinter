@@ -308,7 +308,7 @@ class EpsonPrinter(PrinterInterface):
             else:
                 # completar linea descripción complementaria (facturas)
                 extraparams[-3 + i] = formatText(d)[:20]
-        if self.USAR_IMPUESTOS_INTERNOS:
+        if self.USAR_IMPUESTOS_INTERNOS and self._currentDocument != self.CURRENT_DOC_TICKET:
             # agregar campos de acrecentamiento RNI e impuestos internos N(9.8)
             extraparams += ["0000", "0" * 17]
         reply = self._sendCommand(self.CMD_PRINT_LINE_ITEM[self._getCommandIndex()],
@@ -349,7 +349,7 @@ class EpsonPrinter(PrinterInterface):
         ivaStr = str(int(iva * 100))
         extraparams = self._currentDocument in (self.CURRENT_DOC_BILL_TICKET,
             self.CURRENT_DOC_CREDIT_TICKET) and ["", "", ""] or []
-        if self.USAR_IMPUESTOS_INTERNOS:
+        if self.USAR_IMPUESTOS_INTERNOS and self._currentDocument != self.CURRENT_DOC_TICKET:
             # agregar campos de acrecentamiento RNI e impuestos internos N(9.8)
             extraparams += ["0000", "0" * 17]
         reply = self._sendCommand(self.CMD_PRINT_LINE_ITEM[self._getCommandIndex()],
