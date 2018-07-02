@@ -59,6 +59,7 @@ class EpsonPrinter(PrinterInterface):
 ##    CMD_PRINT_TEXT_IN_FISCAL = (0x41, 0x61)
     CMD_PRINT_TEXT_IN_FISCAL = 0x41
     CMD_PRINT_LINE_ITEM = (0x42, 0x62)
+    CMD_ADD_PERCEPTION = 0x66
     CMD_PRINT_SUBTOTAL = (0x43, 0x63)
     CMD_ADD_PAYMENT = (0x44, 0x64)
     CMD_CLOSE_FISCAL_RECEIPT = (0x45, 0x65)
@@ -355,6 +356,34 @@ class EpsonPrinter(PrinterInterface):
         reply = self._sendCommand(self.CMD_PRINT_LINE_ITEM[self._getCommandIndex()],
                           [formatText(description[:20]),
                             quantityStr, priceUnitStr, ivaStr, sign, bultosStr, "0" * 8] + extraparams)
+        return reply
+
+    def addTax(self, tax_id, description, amount, rate=None):
+        """Agrega un otros tributos (i.e. percepción) a la FC.
+            @param description  Descripción
+            @param amount       Importe
+            @param iva          Porcentaje de Iva (si corresponde)
+            @param tax_id       Código de Impuesto (ver 2da Generación)
+        """
+        if tax_id in (5, 7, 8, 9):
+            perception = 'O'        # 0x4F  Otro tipo de Percepción (cod 9)
+        elif tax_id in (6, ):
+            if rate and self.model == "epsonlx300+":
+                perception = 'T'    # 0x54  Percepción de IVA a una tasa de IVA (cod 6)
+            else:
+                perception = 'I'    # 0x49  Percepción Global de IVA 
+        else:
+            raise NotImplementedError("El código de impuesto no está implementado")
+
+        amountStr = str(int(round(amount * 100, 0)))
+        ivaStr = str(int(rate * 100)) if rate is not None else ""
+        if perception == 'T' and self.model == "epsonlx300+":
+            params = [ivaStr, amountStr]
+        else:
+            # En tiqueteadors (TMU220AF) no se envia tasa:
+            params = [amountStr]
+        reply = self._sendCommand(self.CMD_ADD_PERCEPTION,
+                          [formatText(description[:20]), perception] + params)
         return reply
 
     def subtotal(self, print_text=True, display=False, text="Subtotal"):
