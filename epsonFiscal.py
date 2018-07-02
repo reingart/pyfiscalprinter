@@ -304,8 +304,9 @@ class EpsonPrinter(PrinterInterface):
         for i, d in enumerate(description[:-1]):
             if self._getCommandIndex() == 0:
                 # tickets: enviar descripción complementaria con comando extra:
-                self._sendCommand(self.CMD_PRINT_TEXT_IN_FISCAL,
-                                   [formatText(d)[:20]])
+                if d:
+                    self._sendCommand(self.CMD_PRINT_TEXT_IN_FISCAL,
+                                       [formatText(d)[:20]])
             else:
                 # completar linea descripción complementaria (facturas)
                 extraparams[-3 + i] = formatText(d)[:20]
