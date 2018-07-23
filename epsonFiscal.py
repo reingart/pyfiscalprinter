@@ -159,8 +159,8 @@ class EpsonPrinter(PrinterInterface):
             self._setHeaderTrailer(line, text)
             line += 1
 
-    def openBillCreditTicket(self, type, name, address, doc, docType, ivaType, reference="NC"):
-        return self._openBillCreditTicket(type, name, address, doc, docType, ivaType, isCreditNote=True)
+    def openBillCreditTicket(self, type, name, address, doc, docType, ivaType, reference=""):
+        return self._openBillCreditTicket(type, name, address, doc, docType, ivaType, isCreditNote=True, reference=reference)
 
     def openBillTicket(self, type, name, address, doc, docType, ivaType):
         return self._openBillCreditTicket(type, name, address, doc, docType, ivaType, isCreditNote=False)
@@ -174,6 +174,12 @@ class EpsonPrinter(PrinterInterface):
             doc = doc.replace("-", "").replace(".", "")
             docType = self.docTypeNames[docType]
         self._type = type
+        # Remito primera linea - Es obligatorio si el cliente no es consumidor final
+        if not reference:
+            if (isCreditNote or self.ivaTypeMap.get(ivaType, "F") != "F"):
+                reference = "-"
+            else:
+                reference = ""
         if self.model == "epsonlx300+":
             parameters = [isCreditNote and "N" or "F", # Por ahora no soporto ND, que sería "D"
                 "C",
@@ -192,8 +198,7 @@ class EpsonPrinter(PrinterInterface):
                 formatText(address[:self.ADDRESS_SIZE] or "-"), # Domicilio
                 formatText(address[self.ADDRESS_SIZE:self.ADDRESS_SIZE * 2]), # Domicilio 2da linea
                 formatText(address[self.ADDRESS_SIZE * 2:self.ADDRESS_SIZE * 3]), # Domicilio 3ra linea
-                (isCreditNote or self.ivaTypeMap.get(ivaType, "F") != "F") and "-" or "",
-                # Remito primera linea - Es obligatorio si el cliente no es consumidor final
+                reference, # Remito primera linea
                 "", # Remito segunda linea
                 "C", # No somos una farmacia
                 ]
@@ -215,8 +220,7 @@ class EpsonPrinter(PrinterInterface):
                 formatText(address[:self.ADDRESS_SIZE] or "-"), # Domicilio
                 formatText(address[self.ADDRESS_SIZE:self.ADDRESS_SIZE * 2]), # Domicilio 2da linea
                 formatText(address[self.ADDRESS_SIZE * 2:self.ADDRESS_SIZE * 3]), # Domicilio 3ra linea
-                (isCreditNote or self.ivaTypeMap.get(ivaType, "F") != "F") and "-" or "",
-                # Remito primera linea - Es obligatorio si el cliente no es consumidor final
+                reference, # Remito primera linea
                 "", # Remito segunda linea
                 "C", # No somos una farmacia
                 ]
